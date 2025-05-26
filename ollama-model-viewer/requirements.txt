@@ -1,0 +1,6 @@
+# Ollama Model Viewer Requirements
+# Core GUI framework (usually comes with Python)
+# tkinter is included with Python standard library
+
+# Additional packages for enhanced functionality
+# Note: tkinter comes with Python, so no additional GUI packages needed 
