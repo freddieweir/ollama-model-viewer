@@ -23,7 +23,8 @@ import threading
 import time
 
 # Import the virtual environment manager
-sys.path.append('/Users/fweir/py-utils')
+import os
+sys.path.append(os.path.expanduser('~/py-utils'))
 from module_venv import AutoVirtualEnvironment
 
 class OllamaModelViewer:
