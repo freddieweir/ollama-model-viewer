@@ -140,7 +140,7 @@ The application uses a carefully designed color palette optimized for ADHD users
 
 The app uses a custom virtual environment manager located at:
 ```
-/Users/fweir/py-utils/module_venv.py
+~/py-utils/module_venv.py
 ```
 
 This ensures consistent dependency management across projects.
@@ -161,7 +161,7 @@ The app connects to Ollama via the command line interface:
 - Try running `ollama list` in terminal to verify
 
 **"Virtual environment errors"**
-- Check that `/Users/fweir/py-utils/module_venv.py` exists
+- Check that `~/py-utils/module_venv.py` exists
 - Verify Python 3.8+ is installed
 
 **"GUI not displaying correctly"**
