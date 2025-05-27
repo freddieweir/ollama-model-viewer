@@ -1,14 +1,13 @@
 # 🚀 Ollama Model Viewer
 
-A beautiful, ADHD-friendly desktop application for viewing and managing your Ollama models with intuitive color coding and comprehensive model information.
+A desktop application for viewing and managing your Ollama models with intuitive color coding and comprehensive model information.
 
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 ## ✨ Features
 
-### 🎨 ADHD-Friendly Design
+### 🎨 User-Friendly Design
 - **Color-coded models** based on usage recency:
   - 🟢 **Green**: Recently used (< 2 weeks)
   - 🟡 **Yellow**: Moderately used (2-4 weeks)  
@@ -175,27 +174,8 @@ Run with debug output:
 python ollama_model_viewer.py --debug
 ```
 
-## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
 
-### Development Setup
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- **Ollama team** for the excellent local LLM platform
-- **Python tkinter** for the GUI framework
-- **ADHD community** for design inspiration and feedback
 
 ## 🔮 Future Features
 
@@ -210,6 +190,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [ ] System resource monitoring
 - [ ] Model recommendation engine
 
----
 
-**Made with ❤️ for the ADHD community and Ollama users** 
