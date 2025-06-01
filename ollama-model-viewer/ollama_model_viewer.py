@@ -457,23 +457,21 @@ class OllamaModelViewer:
         
         # Add models to tree
         for model in self.filtered_models:
-            # Build status icons string
-            status_icons = ""
+            # Build status icons string - start with age indicator
+            if model['age_category'] == 'Recently Used':
+                status_icons = "🟢"
+            elif model['age_category'] == 'Moderately Used':
+                status_icons = "🟡"
+            else:
+                status_icons = "🔴"
+            
+            # Add special status indicators
             if model.get('is_starred', False):
                 status_icons += "⭐"
             if model.get('is_liberated', False):
                 status_icons += "🔓"
             if model.get('is_queued_for_deletion', False):
                 status_icons += "🗑️"
-            
-            # If no special status, show age indicator
-            if not status_icons:
-                if model['age_category'] == 'Recently Used':
-                    status_icons = "🟢"
-                elif model['age_category'] == 'Moderately Used':
-                    status_icons = "🟡"
-                else:
-                    status_icons = "🔴"
             
             item_id = self.tree.insert('', 'end', values=(
                 status_icons,
@@ -485,21 +483,17 @@ class OllamaModelViewer:
                 model['id'][:12] + "..."  # Truncate ID for display
             ))
             
-            # Set row colors based on status
+            # Set row colors based on status (but not for liberated models anymore)
             if model.get('is_queued_for_deletion', False):
                 # Highlight models queued for deletion
                 self.tree.item(item_id, tags=('deletion',))
             elif model.get('is_starred', False):
                 # Highlight starred models
                 self.tree.item(item_id, tags=('starred',))
-            elif model.get('is_liberated', False):
-                # Highlight liberated models
-                self.tree.item(item_id, tags=('liberated',))
         
-        # Configure tag colors
+        # Configure tag colors (removed liberated tag since we're not highlighting those rows anymore)
         self.tree.tag_configure('deletion', background=self.colors['deletion'], foreground='white')
         self.tree.tag_configure('starred', background=self.colors['accent_pink'], foreground=self.colors['bg_primary'])
-        self.tree.tag_configure('liberated', background=self.colors['accent_orange'], foreground=self.colors['bg_primary'])
         
         # Update count
         self.count_label.config(text=f"📊 {len(self.filtered_models)} models displayed")
