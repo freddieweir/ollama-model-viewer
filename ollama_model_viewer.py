@@ -293,7 +293,7 @@ class OllamaModelViewer:
         list_frame.pack(fill='both', expand=True, padx=20, pady=(0, 10))
         
         # Create treeview with columns
-        columns = ('status_icons', 'name', 'size', 'modified', 'capabilities', 'status', 'id')
+        columns = ('status_icons', 'name', 'size', 'modified', 'last_used', 'capabilities', 'status', 'id')
         self.tree = ttk.Treeview(list_frame, 
                                 columns=columns, 
                                 show='headings',
@@ -305,6 +305,7 @@ class OllamaModelViewer:
         self.tree.heading('name', text='📝 Model Name', command=lambda: self.sort_by_column('name'))
         self.tree.heading('size', text='💾 Size', command=lambda: self.sort_by_column('size'))
         self.tree.heading('modified', text='🕒 Last Modified', command=lambda: self.sort_by_column('modified'))
+        self.tree.heading('last_used', text='💬 Last Used (OpenWebUI)', command=lambda: self.sort_by_column('last_used'))
         self.tree.heading('capabilities', text='⚡ Capabilities', command=lambda: self.sort_by_column('capabilities'))
         self.tree.heading('status', text='🔄 Server Status', command=lambda: self.sort_by_column('status'))
         self.tree.heading('id', text='🔑 Model ID', command=lambda: self.sort_by_column('id'))
@@ -314,6 +315,7 @@ class OllamaModelViewer:
         self.tree.column('name', width=300, minwidth=200)
         self.tree.column('size', width=100, minwidth=80)
         self.tree.column('modified', width=150, minwidth=120)
+        self.tree.column('last_used', width=160, minwidth=140)
         self.tree.column('capabilities', width=200, minwidth=150)
         self.tree.column('status', width=130, minwidth=120)
         self.tree.column('id', width=200, minwidth=150)
