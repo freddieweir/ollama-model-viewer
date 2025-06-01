@@ -531,11 +531,7 @@ class OllamaModelViewer:
             elif model['age_category'] == 'Moderately Used':
                 status_icons = "🟡"
             else:
-                status_icons = "🔴"
-            
-            # Add special status indicators
-            if model.get('is_starred', False):
-                status_icons += "⭐"
+                status_icons = ""  # Age indicators moved to Last Modified column
             if model.get('is_liberated', False):
                 status_icons += "🔓"
             if model.get('is_queued_for_deletion', False):
@@ -545,22 +541,12 @@ class OllamaModelViewer:
             elif model.get('variant_info') and model.get('is_special_variant', False):
                 status_icons += "🔀"  # Special variant indicator
             
-            # Add OpenWebUI usage indicators
-            usage_info = model.get('usage_info')
-            if usage_info:
-                usage_count = usage_info.get('usage_count', 0)
-                if usage_count > 50:
-                    status_icons += "🔥"  # Heavily used
-                elif usage_count > 10:
-                    status_icons += "📊"  # Frequently used
-                elif usage_count > 0:
-                    status_icons += "💬"  # Used
             
             item_id = self.tree.insert('', 'end', values=(
                 status_icons,
                 model['name'],
                 model['size'],
-                model['modified'],
+                (f"{"🟢" if model.get("age_category") == "Recently Used" else "🟡" if model.get("age_category") == "Moderately Used" else "🔴"} {model["modified"]}"),
                 model['capabilities'],
                 model['status'],
                 model['id'][:12] + "..."  # Truncate ID for display
