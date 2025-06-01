@@ -565,7 +565,11 @@ class OllamaModelViewer:
                 model['name'],
                 model['size'],
                 model['modified'],
-                "Never used",  # Temporary safe fallback
+                (
+                    self.format_last_used_time(model.get('usage_info', {}).get('last_used')) 
+                    if model and isinstance(model, dict) and model.get('usage_info') and model.get('usage_info', {}).get('last_used') 
+                    else 'Never used'
+                ),
                 model['capabilities'],
                 model['status'],
                 model['id'][:12] + "..."  # Truncate ID for display
