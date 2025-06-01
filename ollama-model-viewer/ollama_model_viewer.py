@@ -8,6 +8,9 @@ Features:
 - 📊 Model capabilities and storage information
 - 🎯 ADHD-friendly UI with clear navigation and emojis
 - ⚡ Real-time model status and information
+- 🗑️ Model deletion with queue and storage estimates
+- ⭐ Star/favorite models for easy identification
+- 🔓 Auto-detection of liberated/uncensored models
 """
 
 import sys
@@ -16,7 +19,7 @@ import json
 import subprocess
 import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Set
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
@@ -40,6 +43,21 @@ class OllamaModelViewer:
         self.search_var = tk.StringVar()
         self.filter_var = tk.StringVar()
         
+        # New features
+        self.deletion_queue: Set[str] = set()  # Models queued for deletion
+        self.starred_models: Set[str] = set()  # Starred/favorite models
+        self.config_file = Path.home() / '.ollama_model_viewer_config.json'
+        
+        # Liberation detection keywords
+        self.liberation_keywords = [
+            'uncensored', 'abliterated', 'art', 'unfiltered', 'raw', 
+            'nsfw', 'freedom', 'libre', 'unleashed', 'unlimited',
+            'dpo', 'rogue', 'wild', 'rebel', 'free'
+        ]
+        
+        # Load saved configuration
+        self.load_config()
+        
         # Color scheme for ADHD-friendly design
         self.colors = {
             'bg_primary': '#1e1e2e',      # Dark background
@@ -52,10 +70,13 @@ class OllamaModelViewer:
             'accent_red': '#f38ba8',       # Old models (1+ month)
             'accent_blue': '#89b4fa',      # Accent color
             'accent_purple': '#cba6f7',    # Special highlights
+            'accent_orange': '#fab387',    # Liberation indicator
+            'accent_pink': '#f5c2e7',      # Starred models
             'border': '#6c7086',           # Borders
             'success': '#a6e3a1',          # Success states
             'warning': '#f9e2af',          # Warning states
-            'error': '#f38ba8'             # Error states
+            'error': '#f38ba8',            # Error states
+            'deletion': '#f38ba8'          # Models queued for deletion
         }
         
         self.setup_ui()
@@ -136,8 +157,25 @@ class OllamaModelViewer:
                                style='Header.TLabel')
         title_label.pack(side='left')
         
+        # Right side button frame
+        button_frame = ttk.Frame(header_frame, style='Custom.TFrame')
+        button_frame.pack(side='right')
+        
+        # Deletion Queue button
+        self.queue_btn = tk.Button(button_frame,
+                                  text="🗑️ Queue (0)",
+                                  command=self.show_deletion_queue,
+                                  bg=self.colors['warning'],
+                                  fg=self.colors['bg_primary'],
+                                  font=('SF Pro Display', 11, 'bold'),
+                                  relief='flat',
+                                  padx=15,
+                                  pady=6,
+                                  cursor='hand2')
+        self.queue_btn.pack(side='right', padx=(0, 10))
+        
         # Refresh button
-        refresh_btn = tk.Button(header_frame,
+        refresh_btn = tk.Button(button_frame,
                                text="🔄 Refresh",
                                command=self.refresh_models,
                                bg=self.colors['accent_blue'],
@@ -178,7 +216,8 @@ class OllamaModelViewer:
                                    values=['All Models', 'Recently Used (< 2 weeks)', 
                                           'Moderately Used (2-4 weeks)', 'Old Models (1+ month)',
                                           'Text Models', 'Vision Models', 'Large Models (>10GB)',
-                                          'Small Models (<5GB)'],
+                                          'Small Models (<5GB)', '⭐ Starred Models', 
+                                          '🔓 Liberated Models', '🗑️ Queued for Deletion'],
                                    state='readonly',
                                    width=25)
         filter_combo.set('All Models')
@@ -203,7 +242,7 @@ class OllamaModelViewer:
         list_frame.pack(fill='both', expand=True, padx=20, pady=(0, 10))
         
         # Create treeview with columns
-        columns = ('name', 'size', 'modified', 'capabilities', 'status', 'id')
+        columns = ('status_icons', 'name', 'size', 'modified', 'capabilities', 'status', 'id')
         self.tree = ttk.Treeview(list_frame, 
                                 columns=columns, 
                                 show='headings',
@@ -211,19 +250,21 @@ class OllamaModelViewer:
                                 height=20)
         
         # Configure column headings and widths
+        self.tree.heading('status_icons', text='🎯 Status', command=lambda: self.sort_by_column('status_icons'))
         self.tree.heading('name', text='📝 Model Name', command=lambda: self.sort_by_column('name'))
         self.tree.heading('size', text='💾 Size', command=lambda: self.sort_by_column('size'))
         self.tree.heading('modified', text='🕒 Last Modified', command=lambda: self.sort_by_column('modified'))
         self.tree.heading('capabilities', text='⚡ Capabilities', command=lambda: self.sort_by_column('capabilities'))
-        self.tree.heading('status', text='🎯 Status', command=lambda: self.sort_by_column('status'))
+        self.tree.heading('status', text='🔄 Server Status', command=lambda: self.sort_by_column('status'))
         self.tree.heading('id', text='🔑 Model ID', command=lambda: self.sort_by_column('id'))
         
         # Configure column widths
-        self.tree.column('name', width=350, minwidth=200)
+        self.tree.column('status_icons', width=100, minwidth=80)
+        self.tree.column('name', width=300, minwidth=200)
         self.tree.column('size', width=100, minwidth=80)
         self.tree.column('modified', width=150, minwidth=120)
         self.tree.column('capabilities', width=200, minwidth=150)
-        self.tree.column('status', width=150, minwidth=120)
+        self.tree.column('status', width=130, minwidth=120)
         self.tree.column('id', width=200, minwidth=150)
         
         # Create scrollbars
@@ -238,6 +279,25 @@ class OllamaModelViewer:
         
         # Bind double-click event
         self.tree.bind('<Double-1>', self.on_model_double_click)
+        
+        # Add context menu for right-click actions
+        self.context_menu = tk.Menu(self.root, tearoff=0, 
+                                   bg=self.colors['bg_secondary'],
+                                   fg=self.colors['text_primary'],
+                                   activebackground=self.colors['accent_blue'],
+                                   activeforeground=self.colors['bg_primary'])
+        
+        self.context_menu.add_command(label="⭐ Toggle Star", command=self.context_toggle_star)
+        self.context_menu.add_command(label="📋 Show Details", command=self.context_show_details)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label="🗑️ Add to Deletion Queue", command=self.context_add_to_queue)
+        self.context_menu.add_command(label="❌ Remove from Queue", command=self.context_remove_from_queue)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label="🗂️ Copy Model Name", command=self.context_copy_name)
+        
+        # Bind right-click event
+        self.tree.bind('<Button-3>', self.show_context_menu)  # Right-click
+        self.tree.bind('<Control-Button-1>', self.show_context_menu)  # Ctrl+click for Mac
         
     def create_status_bar(self):
         """Create the status bar."""
@@ -300,6 +360,15 @@ class OllamaModelViewer:
                 # Determine capabilities based on model name
                 capabilities = self.determine_capabilities(name)
                 
+                # Check if model is liberated/uncensored
+                is_liberated = self.is_liberated_model(name)
+                
+                # Check if model is starred
+                is_starred = name in self.starred_models
+                
+                # Check if model is queued for deletion
+                is_queued_for_deletion = name in self.deletion_queue
+                
                 model_data = {
                     'name': name,
                     'id': model_id,
@@ -308,7 +377,10 @@ class OllamaModelViewer:
                     'age_category': age_category,
                     'color': color,
                     'capabilities': capabilities,
-                    'status': self.get_model_status(name)
+                    'status': self.get_model_status(name),
+                    'is_liberated': is_liberated,
+                    'is_starred': is_starred,
+                    'is_queued_for_deletion': is_queued_for_deletion
                 }
                 
                 models.append(model_data)
@@ -385,7 +457,26 @@ class OllamaModelViewer:
         
         # Add models to tree
         for model in self.filtered_models:
+            # Build status icons string
+            status_icons = ""
+            if model.get('is_starred', False):
+                status_icons += "⭐"
+            if model.get('is_liberated', False):
+                status_icons += "🔓"
+            if model.get('is_queued_for_deletion', False):
+                status_icons += "🗑️"
+            
+            # If no special status, show age indicator
+            if not status_icons:
+                if model['age_category'] == 'Recently Used':
+                    status_icons = "🟢"
+                elif model['age_category'] == 'Moderately Used':
+                    status_icons = "🟡"
+                else:
+                    status_icons = "🔴"
+            
             item_id = self.tree.insert('', 'end', values=(
+                status_icons,
                 model['name'],
                 model['size'],
                 model['modified'],
@@ -394,11 +485,27 @@ class OllamaModelViewer:
                 model['id'][:12] + "..."  # Truncate ID for display
             ))
             
-            # Set row color based on age category
-            self.tree.set(item_id, 'name', f"● {model['name']}")
-            
+            # Set row colors based on status
+            if model.get('is_queued_for_deletion', False):
+                # Highlight models queued for deletion
+                self.tree.item(item_id, tags=('deletion',))
+            elif model.get('is_starred', False):
+                # Highlight starred models
+                self.tree.item(item_id, tags=('starred',))
+            elif model.get('is_liberated', False):
+                # Highlight liberated models
+                self.tree.item(item_id, tags=('liberated',))
+        
+        # Configure tag colors
+        self.tree.tag_configure('deletion', background=self.colors['deletion'], foreground='white')
+        self.tree.tag_configure('starred', background=self.colors['accent_pink'], foreground=self.colors['bg_primary'])
+        self.tree.tag_configure('liberated', background=self.colors['accent_orange'], foreground=self.colors['bg_primary'])
+        
         # Update count
         self.count_label.config(text=f"📊 {len(self.filtered_models)} models displayed")
+        
+        # Update queue button
+        self.update_queue_button()
     
     def refresh_models(self):
         """Refresh the model list."""
@@ -455,6 +562,12 @@ class OllamaModelViewer:
                         continue
                 except:
                     continue
+            elif filter_value == '⭐ Starred Models' and not model.get('is_starred', False):
+                continue
+            elif filter_value == '🔓 Liberated Models' and not model.get('is_liberated', False):
+                continue
+            elif filter_value == '🗑️ Queued for Deletion' and not model.get('is_queued_for_deletion', False):
+                continue
             
             self.filtered_models.append(model)
         
@@ -492,7 +605,7 @@ class OllamaModelViewer:
         selection = self.tree.selection()
         if selection:
             item = self.tree.item(selection[0])
-            model_name = item['values'][0].replace('● ', '')
+            model_name = item['values'][1].replace('● ', '')
             self.show_model_details(model_name)
     
     def show_model_details(self, model_name: str):
@@ -558,13 +671,350 @@ class OllamaModelViewer:
         """Start the application."""
         self.root.mainloop()
 
+    def load_config(self):
+        """Load configuration from file."""
+        try:
+            if self.config_file.exists():
+                with open(self.config_file, 'r') as f:
+                    config = json.load(f)
+                    self.starred_models = set(config.get('starred_models', []))
+                    # Could add other settings here in the future
+        except Exception as e:
+            print(f"Warning: Could not load config: {e}")
+            self.starred_models = set()
+    
+    def save_config(self):
+        """Save configuration to file."""
+        try:
+            config = {
+                'starred_models': list(self.starred_models),
+                'last_updated': datetime.datetime.now().isoformat()
+            }
+            with open(self.config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+        except Exception as e:
+            print(f"Warning: Could not save config: {e}")
+    
+    def toggle_star(self, model_name: str):
+        """Toggle star status for a model."""
+        if model_name in self.starred_models:
+            self.starred_models.remove(model_name)
+        else:
+            self.starred_models.add(model_name)
+        self.save_config()
+        self.populate_tree()  # Refresh the display
+    
+    def is_liberated_model(self, model_name: str) -> bool:
+        """Check if a model is likely uncensored/liberated based on keywords."""
+        model_lower = model_name.lower()
+        return any(keyword in model_lower for keyword in self.liberation_keywords)
+    
+    def get_storage_estimate(self, model_names: List[str]) -> Tuple[float, str]:
+        """Calculate total storage that would be recovered by deleting models."""
+        total_bytes = 0
+        for model_name in model_names:
+            for model in self.models_data:
+                if model['name'] == model_name:
+                    try:
+                        # Parse size (e.g., "4.7 GB" -> 4.7)
+                        size_parts = model['size'].split()
+                        if len(size_parts) >= 2:
+                            size_value = float(size_parts[0])
+                            size_unit = size_parts[1].upper()
+                            
+                            # Convert to bytes
+                            if size_unit in ['GB', 'G']:
+                                total_bytes += size_value * 1024 * 1024 * 1024
+                            elif size_unit in ['MB', 'M']:
+                                total_bytes += size_value * 1024 * 1024
+                            elif size_unit in ['KB', 'K']:
+                                total_bytes += size_value * 1024
+                    except (ValueError, IndexError):
+                        continue
+        
+        # Convert back to human readable
+        if total_bytes >= 1024 * 1024 * 1024:
+            return total_bytes / (1024 * 1024 * 1024), f"{total_bytes / (1024 * 1024 * 1024):.1f} GB"
+        elif total_bytes >= 1024 * 1024:
+            return total_bytes / (1024 * 1024), f"{total_bytes / (1024 * 1024):.1f} MB"
+        else:
+            return total_bytes / 1024, f"{total_bytes / 1024:.1f} KB"
+
+    def show_context_menu(self, event):
+        """Show the context menu for right-click actions."""
+        # First select the item under cursor
+        item = self.tree.identify_row(event.y)
+        if item:
+            self.tree.selection_set(item)
+            self.context_menu.post(event.x_root, event.y_root)
+    
+    def context_toggle_star(self):
+        """Toggle star status for the selected model."""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            model_name = item['values'][1]  # Name is in column 1 now
+            self.toggle_star(model_name)
+    
+    def context_show_details(self):
+        """Show details for the selected model."""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            model_name = item['values'][1]  # Name is in column 1 now
+            self.show_model_details(model_name)
+    
+    def context_add_to_queue(self):
+        """Add the selected model to the deletion queue."""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            model_name = item['values'][1]  # Name is in column 1 now
+            self.deletion_queue.add(model_name)
+            self.update_queue_button()
+            self.populate_tree()
+    
+    def context_remove_from_queue(self):
+        """Remove the selected model from the deletion queue."""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            model_name = item['values'][1]  # Name is in column 1 now
+            if model_name in self.deletion_queue:
+                self.deletion_queue.remove(model_name)
+                self.update_queue_button()
+                self.populate_tree()
+    
+    def context_copy_name(self):
+        """Copy the name of the selected model to the clipboard."""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            model_name = item['values'][1]  # Name is in column 1 now
+            self.root.clipboard_clear()
+            self.root.clipboard_append(model_name)
+            self.update_status(f"📋 Copied '{model_name}' to clipboard")
+    
+    def update_queue_button(self):
+        """Update the deletion queue button text."""
+        queue_size = len(self.deletion_queue)
+        if queue_size > 0:
+            _, storage_text = self.get_storage_estimate(list(self.deletion_queue))
+            self.queue_btn.config(text=f"🗑️ Queue ({queue_size}) - {storage_text}")
+            self.queue_btn.config(bg=self.colors['error'])
+        else:
+            self.queue_btn.config(text="🗑️ Queue (0)")
+            self.queue_btn.config(bg=self.colors['warning'])
+
+    def show_deletion_queue(self):
+        """Show the deletion queue management dialog."""
+        if not self.deletion_queue:
+            messagebox.showinfo("Deletion Queue", "🗑️ No models in deletion queue")
+            return
+        
+        # Create deletion queue window
+        queue_window = tk.Toplevel(self.root)
+        queue_window.title("🗑️ Model Deletion Queue")
+        queue_window.geometry("800x600")
+        queue_window.configure(bg=self.colors['bg_primary'])
+        
+        # Header frame
+        header_frame = ttk.Frame(queue_window, style='Custom.TFrame')
+        header_frame.pack(fill='x', padx=20, pady=20)
+        
+        title_label = ttk.Label(header_frame, 
+                               text="🗑️ Models Queued for Deletion", 
+                               font=('SF Pro Display', 18, 'bold'),
+                               foreground=self.colors['error'])
+        title_label.pack()
+        
+        # Storage estimate
+        _, storage_text = self.get_storage_estimate(list(self.deletion_queue))
+        storage_label = ttk.Label(header_frame,
+                                 text=f"💾 Total Storage to Recover: {storage_text}",
+                                 font=('SF Pro Display', 14, 'bold'),
+                                 foreground=self.colors['accent_green'])
+        storage_label.pack(pady=(10, 0))
+        
+        # Model list frame
+        list_frame = ttk.Frame(queue_window, style='Custom.TFrame')
+        list_frame.pack(fill='both', expand=True, padx=20, pady=(0, 20))
+        
+        # Create listbox for queued models
+        queue_listbox = tk.Listbox(list_frame,
+                                  bg=self.colors['bg_tertiary'],
+                                  fg=self.colors['text_primary'],
+                                  font=('SF Pro Display', 12),
+                                  selectbackground=self.colors['accent_blue'],
+                                  height=15)
+        
+        # Add models to listbox with details
+        for model_name in sorted(self.deletion_queue):
+            for model in self.models_data:
+                if model['name'] == model_name:
+                    display_text = f"🗑️ {model_name} ({model['size']})"
+                    if model.get('is_starred'):
+                        display_text = f"⭐{display_text}"
+                    if model.get('is_liberated'):
+                        display_text = f"🔓{display_text}"
+                    queue_listbox.insert(tk.END, display_text)
+                    break
+        
+        # Scrollbar for listbox
+        scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=queue_listbox.yview)
+        queue_listbox.configure(yscrollcommand=scrollbar.set)
+        
+        queue_listbox.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+        
+        # Button frame
+        button_frame = ttk.Frame(queue_window, style='Custom.TFrame')
+        button_frame.pack(fill='x', padx=20, pady=(0, 20))
+        
+        # Remove selected button
+        def remove_selected():
+            selection = queue_listbox.curselection()
+            if selection:
+                selected_text = queue_listbox.get(selection[0])
+                # Extract model name from display text
+                model_name = selected_text.split('🗑️ ')[1].split(' (')[0]
+                self.deletion_queue.remove(model_name)
+                queue_listbox.delete(selection[0])
+                self.update_queue_button()
+                self.populate_tree()
+                
+                # Update storage estimate
+                if self.deletion_queue:
+                    _, new_storage_text = self.get_storage_estimate(list(self.deletion_queue))
+                    storage_label.config(text=f"💾 Total Storage to Recover: {new_storage_text}")
+                else:
+                    queue_window.destroy()
+        
+        remove_btn = tk.Button(button_frame,
+                              text="❌ Remove Selected",
+                              command=remove_selected,
+                              bg=self.colors['warning'],
+                              fg=self.colors['bg_primary'],
+                              font=('SF Pro Display', 11, 'bold'),
+                              padx=15, pady=8)
+        remove_btn.pack(side='left', padx=(0, 10))
+        
+        # Clear all button
+        def clear_all():
+            if messagebox.askyesno("Clear Queue", "🗑️ Remove all models from deletion queue?"):
+                self.deletion_queue.clear()
+                self.update_queue_button()
+                self.populate_tree()
+                queue_window.destroy()
+        
+        clear_btn = tk.Button(button_frame,
+                             text="🧹 Clear All",
+                             command=clear_all,
+                             bg=self.colors['accent_yellow'],
+                             fg=self.colors['bg_primary'],
+                             font=('SF Pro Display', 11, 'bold'),
+                             padx=15, pady=8)
+        clear_btn.pack(side='left', padx=(0, 10))
+        
+        # Execute deletion button
+        def execute_deletion():
+            if not self.deletion_queue:
+                return
+            
+            confirm_msg = f"⚠️ This will permanently delete {len(self.deletion_queue)} models and recover {storage_text} of storage.\n\nThis action cannot be undone!\n\nAre you sure?"
+            
+            if messagebox.askyesno("Confirm Deletion", confirm_msg):
+                self.execute_model_deletions()
+                queue_window.destroy()
+        
+        execute_btn = tk.Button(button_frame,
+                               text=f"🔥 Delete All ({len(self.deletion_queue)} models)",
+                               command=execute_deletion,
+                               bg=self.colors['error'],
+                               fg='white',
+                               font=('SF Pro Display', 12, 'bold'),
+                               padx=20, pady=8)
+        execute_btn.pack(side='right')
+        
+        # Close button
+        close_btn = tk.Button(button_frame,
+                             text="✖️ Close",
+                             command=queue_window.destroy,
+                             bg=self.colors['bg_secondary'],
+                             fg=self.colors['text_primary'],
+                             font=('SF Pro Display', 11),
+                             padx=15, pady=8)
+        close_btn.pack(side='right', padx=(0, 10))
+    
+    def execute_model_deletions(self):
+        """Execute the actual deletion of models in the queue."""
+        if not self.deletion_queue:
+            return
+        
+        deleted_models = []
+        failed_deletions = []
+        
+        # Create progress window
+        progress_window = tk.Toplevel(self.root)
+        progress_window.title("🗑️ Deleting Models")
+        progress_window.geometry("500x300")
+        progress_window.configure(bg=self.colors['bg_primary'])
+        
+        progress_label = ttk.Label(progress_window,
+                                  text="🔄 Deleting models...",
+                                  font=('SF Pro Display', 14),
+                                  foreground=self.colors['text_primary'])
+        progress_label.pack(pady=20)
+        
+        status_text = tk.Text(progress_window,
+                             height=10,
+                             bg=self.colors['bg_tertiary'],
+                             fg=self.colors['text_primary'],
+                             font=('SF Pro Display', 10))
+        status_text.pack(fill='both', expand=True, padx=20, pady=(0, 20))
+        
+        # Delete each model
+        for i, model_name in enumerate(list(self.deletion_queue)):
+            status_text.insert(tk.END, f"🗑️ Deleting {model_name}...\n")
+            status_text.see(tk.END)
+            progress_window.update()
+            
+            try:
+                # Execute ollama delete command
+                result = subprocess.run(['ollama', 'delete', model_name], 
+                                      capture_output=True, text=True, check=True)
+                deleted_models.append(model_name)
+                status_text.insert(tk.END, f"✅ Successfully deleted {model_name}\n")
+                
+            except subprocess.CalledProcessError as e:
+                failed_deletions.append(model_name)
+                status_text.insert(tk.END, f"❌ Failed to delete {model_name}: {e}\n")
+            
+            status_text.see(tk.END)
+            progress_window.update()
+        
+        # Clear the deletion queue and update UI
+        self.deletion_queue.clear()
+        self.update_queue_button()
+        
+        # Show completion message
+        if failed_deletions:
+            messagebox.showwarning("Deletion Complete", 
+                                 f"✅ Deleted {len(deleted_models)} models\n❌ Failed to delete {len(failed_deletions)} models")
+        else:
+            messagebox.showinfo("Deletion Complete", 
+                               f"✅ Successfully deleted all {len(deleted_models)} models!")
+        
+        progress_window.destroy()
+        self.refresh_models()  # Reload the model list
+
 def main():
     """Main function to run the application."""
     # Set up virtual environment with required packages
     venv_manager = AutoVirtualEnvironment(
         custom_name="venv-ollama-model-viewer",
         auto_packages=[
-            'tkinter',  # Usually comes with Python
+            # tkinter is built into Python, no need to install
         ]
     )
     
