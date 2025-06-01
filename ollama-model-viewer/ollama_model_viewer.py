@@ -55,6 +55,13 @@ class OllamaModelViewer:
             'dpo', 'rogue', 'wild', 'rebel', 'free'
         ]
         
+        # Special parameter suffixes that are meaningful variants (not duplicates)
+        self.special_suffixes = [
+            'instruct', 'chat', 'code', 'vision', 'embed', 'text',
+            'a3b', 'dpo', 'ift', 'sft', 'rlhf', 'tool', 'function',
+            'reasoning', 'uncensored', 'abliterated', 'art', 'base'
+        ]
+        
         # Load saved configuration
         self.load_config()
         
@@ -243,7 +250,9 @@ class OllamaModelViewer:
                                           'Moderately Used (2-4 weeks)', 'Old Models (1+ month)',
                                           'Text Models', 'Vision Models', 'Large Models (>10GB)',
                                           'Small Models (<5GB)', '⭐ Starred Models', 
-                                          '🔓 Liberated Models', '🗑️ Queued for Deletion'],
+                                          '🔓 Liberated Models', '🗑️ Queued for Deletion',
+                                          '🔄 Duplicate Models', '🔀 Special Variants',
+                                          '📦 Model Families (2+ models)'],
                                    state='readonly',
                                    width=25)
         filter_combo.set('All Models')
@@ -331,6 +340,13 @@ class OllamaModelViewer:
                                      style='Custom.TLabel')
         self.status_label.pack(side='left')
         
+        # Total storage label
+        self.storage_label = ttk.Label(status_frame,
+                                      text="💾 Calculating storage...",
+                                      style='Custom.TLabel',
+                                      font=('SF Pro Display', 11, 'bold'))
+        self.storage_label.pack(side='right', padx=(0, 20))
+        
         # Model count label
         self.count_label = ttk.Label(status_frame, 
                                     text="", 
@@ -406,6 +422,16 @@ class OllamaModelViewer:
                 }
                 
                 models.append(model_data)
+        
+        # Detect duplicates and variants after all models are parsed
+        duplicates, variants = self.detect_duplicates()
+        
+        # Add duplicate/variant information to model data
+        for model in models:
+            model['is_duplicate'] = model['name'] in duplicates
+            base_name = self.get_model_base_name(model['name'])
+            model['variant_info'] = variants.get(base_name, None)
+            model['is_special_variant'] = self.is_special_variant(model['name'])
         
         return models
     
@@ -494,6 +520,10 @@ class OllamaModelViewer:
                 status_icons += "🔓"
             if model.get('is_queued_for_deletion', False):
                 status_icons += "🗑️"
+            if model.get('is_duplicate', False):
+                status_icons += "🔄"  # Duplicate indicator
+            elif model.get('variant_info') and model.get('is_special_variant', False):
+                status_icons += "🔀"  # Special variant indicator
             
             item_id = self.tree.insert('', 'end', values=(
                 status_icons,
@@ -519,6 +549,23 @@ class OllamaModelViewer:
         
         # Update count
         self.count_label.config(text=f"📊 {len(self.filtered_models)} models displayed")
+        
+        # Update total storage
+        _, total_storage_text = self.calculate_total_storage()
+        self.storage_label.config(text=f"💾 Total Storage: {total_storage_text}")
+        
+        # Count duplicates and variants in filtered models
+        duplicate_count = sum(1 for model in self.filtered_models if model.get('is_duplicate', False))
+        variant_count = sum(1 for model in self.filtered_models if model.get('is_special_variant', False))
+        
+        # Enhanced count display
+        count_text = f"📊 {len(self.filtered_models)} models"
+        if duplicate_count > 0:
+            count_text += f" (🔄 {duplicate_count} duplicates)"
+        if variant_count > 0:
+            count_text += f" (🔀 {variant_count} variants)"
+        
+        self.count_label.config(text=count_text)
         
         # Update queue button
         self.update_queue_button()
@@ -583,6 +630,12 @@ class OllamaModelViewer:
             elif filter_value == '🔓 Liberated Models' and not model.get('is_liberated', False):
                 continue
             elif filter_value == '🗑️ Queued for Deletion' and not model.get('is_queued_for_deletion', False):
+                continue
+            elif filter_value == '🔄 Duplicate Models' and not model.get('is_duplicate', False):
+                continue
+            elif filter_value == '🔀 Special Variants' and not model.get('is_special_variant', False):
+                continue
+            elif filter_value == '📦 Model Families (2+ models)' and not model.get('variant_info'):
                 continue
             
             self.filtered_models.append(model)
@@ -665,6 +718,23 @@ class OllamaModelViewer:
             ("🎯 Status", model_data['status']),
             ("🎨 Age Category", model_data['age_category'])
         ]
+        
+        # Add duplicate/variant information
+        if model_data.get('is_duplicate', False):
+            details.append(("🔄 Duplicate Status", "This is a duplicate model"))
+        elif model_data.get('is_special_variant', False):
+            details.append(("🔀 Variant Status", "This is a special variant"))
+        
+        # Add family information
+        variant_info = model_data.get('variant_info')
+        if variant_info:
+            base_name = self.get_model_base_name(model_data['name'])
+            family_info = f"Family: {base_name} ({variant_info['total_count']} models)"
+            if variant_info['special_variants']:
+                family_info += f"\nSpecial variants: {', '.join(variant_info['special_variants'])}"
+            if len(variant_info['regular_duplicates']) > 1:
+                family_info += f"\nDuplicates: {', '.join(variant_info['regular_duplicates'])}"
+            details.append(("📦 Model Family", family_info))
         
         for i, (label, value) in enumerate(details):
             label_widget = ttk.Label(scrollable_frame, 
@@ -752,6 +822,110 @@ class OllamaModelViewer:
         if total_bytes >= 1024 * 1024 * 1024:
             return total_bytes / (1024 * 1024 * 1024), f"{total_bytes / (1024 * 1024 * 1024):.1f} GB"
         elif total_bytes >= 1024 * 1024:
+            return total_bytes / (1024 * 1024), f"{total_bytes / (1024 * 1024):.1f} MB"
+        else:
+            return total_bytes / 1024, f"{total_bytes / 1024:.1f} KB"
+    
+    def get_model_base_name(self, model_name: str) -> str:
+        """Extract the base model name without parameters."""
+        # Split by colon to separate model name from parameters
+        if ':' in model_name:
+            base, params = model_name.split(':', 1)
+            return base.lower()
+        return model_name.lower()
+    
+    def get_model_params(self, model_name: str) -> str:
+        """Extract the parameter portion of a model name."""
+        if ':' in model_name:
+            _, params = model_name.split(':', 1)
+            return params.lower()
+        return ""
+    
+    def is_special_variant(self, model_name: str) -> bool:
+        """Check if a model has special parameter suffixes that make it a meaningful variant."""
+        params = self.get_model_params(model_name)
+        if not params:
+            return False
+        
+        # Check for special suffixes
+        for suffix in self.special_suffixes:
+            if suffix in params:
+                return True
+        return False
+    
+    def detect_duplicates(self):
+        """Detect duplicate models and variants within model families."""
+        model_families = {}
+        duplicates = set()
+        variants = {}
+        
+        # Group models by base name
+        for model in self.models_data:
+            base_name = self.get_model_base_name(model['name'])
+            params = self.get_model_params(model['name'])
+            
+            if base_name not in model_families:
+                model_families[base_name] = []
+            model_families[base_name].append(model['name'])
+        
+        # Identify duplicates and variants
+        for base_name, models in model_families.items():
+            if len(models) > 1:
+                # Sort models to ensure consistent ordering
+                models.sort()
+                
+                special_variants = []
+                regular_duplicates = []
+                
+                for model_name in models:
+                    if self.is_special_variant(model_name):
+                        special_variants.append(model_name)
+                    else:
+                        regular_duplicates.append(model_name)
+                
+                # Mark regular duplicates (keep the first one unmarked)
+                if len(regular_duplicates) > 1:
+                    for duplicate in regular_duplicates[1:]:
+                        duplicates.add(duplicate)
+                
+                # Store variants info
+                if special_variants or len(regular_duplicates) > 1:
+                    variants[base_name] = {
+                        'special_variants': special_variants,
+                        'regular_duplicates': regular_duplicates,
+                        'total_count': len(models)
+                    }
+        
+        return duplicates, variants
+    
+    def calculate_total_storage(self) -> Tuple[float, str]:
+        """Calculate total storage used by all models."""
+        total_bytes = 0
+        
+        for model in self.models_data:
+            try:
+                # Parse size (e.g., "4.7 GB" -> 4.7)
+                size_parts = model['size'].split()
+                if len(size_parts) >= 2:
+                    size_value = float(size_parts[0])
+                    size_unit = size_parts[1].upper()
+                    
+                    # Convert to bytes
+                    if size_unit in ['GB', 'G']:
+                        total_bytes += size_value * 1024 * 1024 * 1024
+                    elif size_unit in ['MB', 'M']:
+                        total_bytes += size_value * 1024 * 1024
+                    elif size_unit in ['KB', 'K']:
+                        total_bytes += size_value * 1024
+            except (ValueError, IndexError):
+                continue
+        
+        # Convert back to human readable
+        if total_bytes >= 1024 * 1024 * 1024 * 1024:  # TB
+            return total_bytes / (1024 * 1024 * 1024 * 1024), f"{total_bytes / (1024 * 1024 * 1024 * 1024):.1f} TB"
+        elif total_bytes >= 1024 * 1024 * 1024:  # GB
+            return total_bytes / (1024 * 1024 * 1024), f"{total_bytes / (1024 * 1024 * 1024):.1f} GB"
+        elif total_bytes >= 1024 * 1024:  # MB
             return total_bytes / (1024 * 1024), f"{total_bytes / (1024 * 1024):.1f} MB"
         else:
             return total_bytes / 1024, f"{total_bytes / 1024:.1f} KB"
@@ -1107,13 +1281,23 @@ class OllamaModelViewer:
             ("⭐ = Starred/favorite model", 'text'),
             ("🔓 = Liberated/uncensored model", 'text'),
             ("🗑️ = Queued for deletion", 'text'),
+            ("🔄 = Duplicate model", 'text'),
+            ("🔀 = Special variant (e.g., -a3b, -instruct)", 'text'),
             ("", 'space'),
             ("🔍 QUICK FILTERS:", 'section'),
             ("Use the dropdown to filter by:", 'text'),
             ("• ⭐ Starred Models", 'text'),
             ("• 🔓 Liberated Models", 'text'),
             ("• 🗑️ Queued for Deletion", 'text'),
-            ("• Size, age, capabilities, etc.", 'text')
+            ("• 🔄 Duplicate Models", 'text'),
+            ("• 🔀 Special Variants", 'text'),
+            ("• 📦 Model Families (2+ models)", 'text'),
+            ("• Size, age, capabilities, etc.", 'text'),
+            ("", 'space'),
+            ("💾 STORAGE INFO:", 'section'),
+            ("Total storage usage shown in status bar", 'text'),
+            ("Duplicate detection helps identify space savings", 'text'),
+            ("Special variants (-a3b, -instruct) are preserved", 'text')
         ]
         
         for line_data in help_content:
