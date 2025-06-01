@@ -532,10 +532,6 @@ class OllamaModelViewer:
             # Build status icons string - start with age indicator
             if model['age_category'] == 'Recently Used':
                 status_icons = ""  # Age indicators moved to Last Modified column
-                status_icons += "🔓"
-            if model.get('is_queued_for_deletion', False):
-                status_icons += "🗑️"
-            if model.get('is_duplicate', False):
                 status_icons += "🔄"  # Duplicate indicator
             elif model.get('variant_info') and model.get('is_special_variant', False):
                 status_icons += "🔀"  # Special variant indicator
