@@ -92,7 +92,7 @@ class MacOSTranslucentWindow:
         except:
             return False
     
-    def _initialize_color_scheme(self) -> Dict[str, NSColor]:
+    def _initialize_color_scheme(self) -> Dict[str, Any]:
         """Initialize color scheme with dynamic adaptation for translucency."""
         # Base colors that work well with translucency
         base_colors = {
@@ -192,7 +192,7 @@ class MacOSTranslucentWindow:
         self.window.contentView().addSubview_(background_view)
         self.visual_effect_views['background'] = background_view
     
-    def _apply_gaussian_blur(self, view: NSView, radius: float):
+    def _apply_gaussian_blur(self, view: Any, radius: float):
         """Apply Gaussian blur effect to a view with performance optimization."""
         if self.reduce_transparency:
             return  # Skip blur in accessibility mode
@@ -221,7 +221,7 @@ class MacOSTranslucentWindow:
         except:
             return True  # Default to dark mode
     
-    def _ensure_contrast_ratio(self, foreground_color: NSColor, background_color: NSColor) -> NSColor:
+    def _ensure_contrast_ratio(self, foreground_color: Any, background_color: Any) -> Any:
         """Ensure text has adequate contrast ratio against background."""
         # Calculate luminance for both colors
         fg_luminance = self._calculate_luminance(foreground_color)
@@ -236,7 +236,7 @@ class MacOSTranslucentWindow:
         
         return foreground_color
     
-    def _calculate_luminance(self, color: NSColor) -> float:
+    def _calculate_luminance(self, color: Any) -> float:
         """Calculate relative luminance of a color (WCAG 2.1 standard)."""
         # Convert to RGB color space if needed
         rgb_color = color.colorUsingColorSpaceName_("NSCalibratedRGBColorSpace")
@@ -267,7 +267,7 @@ class MacOSTranslucentWindow:
         darker = min(luminance1, luminance2)
         return (lighter + 0.05) / (darker + 0.05)
     
-    def _adjust_color_for_contrast(self, foreground_color: NSColor, background_color: NSColor) -> NSColor:
+    def _adjust_color_for_contrast(self, foreground_color: Any, background_color: Any) -> Any:
         """Adjust foreground color to meet contrast requirements."""
         bg_luminance = self._calculate_luminance(background_color)
         
@@ -279,7 +279,7 @@ class MacOSTranslucentWindow:
             # Dark background, make text lighter
             return NSColor.colorWithRed_green_blue_alpha_(1.0, 1.0, 1.0, 1.0)
     
-    def create_content_area(self) -> NSView:
+    def create_content_area(self) -> Any:
         """Create the main content area for the application."""
         if 'surface' in self.visual_effect_views:
             content_view = self.visual_effect_views['surface']
@@ -324,7 +324,7 @@ class MacOSTranslucentWindow:
 class MacOSModelListView:
     """Model list view with translucent effects and performance optimization."""
     
-    def __init__(self, parent_view: NSView, colors: Dict[str, NSColor]):
+    def __init__(self, parent_view: Any, colors: Dict[str, Any]):
         """Initialize the model list view."""
         self.parent_view = parent_view
         self.colors = colors
