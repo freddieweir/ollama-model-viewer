@@ -1663,8 +1663,12 @@ class OllamaModelViewer:
     def generate_database_key(self) -> bytes:
         """Generate a secure key for database encryption."""
         # Use a combination of user-specific data for key generation
-        user_data = f"{Path.home()}{os.getlogin()}"
-        key = hashlib.pbkdf2_hmac('sha256', user_data.encode(), b'ollama_viewer_salt', 100000)
+        # Use machine-specific data that doesn't expose username
+        home_path = str(Path.home())
+        # Create a hash of the home path without exposing the username directly
+        machine_id = hashlib.sha256(home_path.encode()).hexdigest()[:16]
+        key_material = f"ollama_viewer_{machine_id}"
+        key = hashlib.pbkdf2_hmac('sha256', key_material.encode(), b'ollama_viewer_salt_v1', 100000)
         return base64.b64encode(key)[:32]  # 32 bytes for encryption
 
     def encrypt_database_file(self, db_path: Path) -> bool:
