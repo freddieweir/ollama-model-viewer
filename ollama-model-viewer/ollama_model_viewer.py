@@ -1419,6 +1419,8 @@ class OllamaModelViewer:
     def detect_openwebui_path(self):
         """Detect OpenWebUI data directory automatically."""
         common_paths = [
+            # Temporary copy location
+            Path.home() / "tmp" / "openwebui",
             # Docker volume mounts
             Path.home() / "openwebui",
             Path.home() / "open-webui", 
@@ -1434,12 +1436,42 @@ class OllamaModelViewer:
             Path("/var/lib/open-webui"),
         ]
         
+        # First try common paths
         for path in common_paths:
             db_path = path / "webui.db"
             if db_path.exists():
                 self.openwebui_data_path = path
                 print(f"✅ Found OpenWebUI database at: {db_path}")
                 return
+        
+        # Try to copy from Docker container if running
+        try:
+            result = subprocess.run(['docker', 'ps', '--format', '{{.Names}}'], 
+                                  capture_output=True, text=True, check=True)
+            container_names = result.stdout.strip().split('\n')
+            
+            for container_name in container_names:
+                if 'webui' in container_name.lower() or 'open-webui' in container_name.lower():
+                    # Try to copy database from container
+                    temp_path = Path.home() / "tmp" / "openwebui"
+                    temp_path.mkdir(parents=True, exist_ok=True)
+                    
+                    try:
+                        copy_result = subprocess.run([
+                            'docker', 'cp', f'{container_name}:/app/backend/data/webui.db', 
+                            str(temp_path / 'webui.db')
+                        ], capture_output=True, text=True, check=True)
+                        
+                        if (temp_path / 'webui.db').exists():
+                            self.openwebui_data_path = temp_path
+                            print(f"✅ Copied OpenWebUI database from Docker container '{container_name}' to: {temp_path / 'webui.db'}")
+                            return
+                    except subprocess.CalledProcessError:
+                        continue
+                        
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            # Docker not available or no containers
+            pass
         
         # Try to find database by searching common locations
         search_paths = [Path.home(), Path("/opt"), Path("/var/lib")]
@@ -1454,6 +1486,8 @@ class OllamaModelViewer:
                     continue
         
         print("⚠️ OpenWebUI database not found. Usage data will not be available.")
+        print("💡 If you have OpenWebUI in Docker, the database has been automatically copied to ~/tmp/openwebui/")
+        print("💡 To manually specify location, you can modify the detect_openwebui_path method")
 
     def get_openwebui_usage_data(self) -> Dict[str, Dict]:
         """Extract model usage data from OpenWebUI database."""
@@ -1474,7 +1508,7 @@ class OllamaModelViewer:
             # This gets the latest usage of each model and counts total usage
             query = """
                 SELECT 
-                    json_extract(chat.meta, '$.models[0]') as model_name,
+                    json_extract(chat, '$.models[0]') as model_name,
                     COUNT(*) as usage_count,
                     MAX(chat.updated_at) as last_used,
                     MIN(chat.updated_at) as first_used,
@@ -1482,8 +1516,8 @@ class OllamaModelViewer:
                              THEN json_extract(chat.meta, '$.usage.total_tokens') 
                              ELSE 0 END) as total_tokens
                 FROM chat 
-                WHERE json_extract(chat.meta, '$.models[0]') IS NOT NULL
-                GROUP BY json_extract(chat.meta, '$.models[0]')
+                WHERE json_extract(chat, '$.models[0]') IS NOT NULL
+                GROUP BY json_extract(chat, '$.models[0]')
                 ORDER BY last_used DESC
             """
             
@@ -1526,9 +1560,10 @@ class OllamaModelViewer:
 
     def get_model_usage_info(self, model_name: str) -> Optional[Dict]:
         """Get usage information for a specific model from OpenWebUI data."""
-        if not self.openwebui_usage_data:
-            # Load usage data if not already loaded
+        if not hasattr(self, '_usage_data_loaded') or not self._usage_data_loaded:
+            # Load usage data only once
             self.openwebui_usage_data = self.get_openwebui_usage_data()
+            self._usage_data_loaded = True
         
         clean_name = self.clean_model_name_for_matching(model_name)
         return self.openwebui_usage_data.get(clean_name)
