@@ -120,8 +120,8 @@ class OllamaModelViewer:
         self.create_status_bar()
         
         # Bind events
-        self.search_var.trace('w', self.on_search_change)
-        self.filter_var.trace('w', self.on_filter_change)
+        self.search_var.trace_add('write', self.on_search_change)
+        self.filter_var.trace_add('write', self.on_filter_change)
         
         # Bind right-click event
         self.tree.bind('<Button-3>', self.show_context_menu)  # Right-click
