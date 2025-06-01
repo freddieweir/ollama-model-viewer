@@ -18,6 +18,7 @@ import os
 import json
 import subprocess
 import datetime
+import sqlite3
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Set
 import tkinter as tk
@@ -47,6 +48,11 @@ class OllamaModelViewer:
         self.deletion_queue: Set[str] = set()  # Models queued for deletion
         self.starred_models: Set[str] = set()  # Starred/favorite models
         self.config_file = Path.home() / '.ollama_model_viewer_config.json'
+        
+        # OpenWebUI Integration
+        self.openwebui_data_path = None  # Will be detected automatically
+        self.openwebui_usage_data = {}  # Cache for model usage from OpenWebUI
+        self.detect_openwebui_path()  # Automatically detect OpenWebUI installation
         
         # Liberation detection keywords
         self.liberation_keywords = [
@@ -252,7 +258,9 @@ class OllamaModelViewer:
                                           'Small Models (<5GB)', '⭐ Starred Models', 
                                           '🔓 Liberated Models', '🗑️ Queued for Deletion',
                                           '🔄 Duplicate Models', '🔀 Special Variants',
-                                          '📦 Model Families (2+ models)'],
+                                          '📦 Model Families (2+ models)', '📊 Used in OpenWebUI',
+                                          '❌ Never Used in OpenWebUI', '🔥 Frequently Used (>10 chats)',
+                                          '⚡ Recent OpenWebUI Activity'],
                                    state='readonly',
                                    width=25)
         filter_combo.set('All Models')
@@ -407,6 +415,9 @@ class OllamaModelViewer:
                 # Check if model is queued for deletion
                 is_queued_for_deletion = name in self.deletion_queue
                 
+                # Get OpenWebUI usage data for this model
+                usage_info = self.get_model_usage_info(name)
+                
                 model_data = {
                     'name': name,
                     'id': model_id,
@@ -418,7 +429,8 @@ class OllamaModelViewer:
                     'status': self.get_model_status(name),
                     'is_liberated': is_liberated,
                     'is_starred': is_starred,
-                    'is_queued_for_deletion': is_queued_for_deletion
+                    'is_queued_for_deletion': is_queued_for_deletion,
+                    'usage_info': usage_info  # Add OpenWebUI usage data
                 }
                 
                 models.append(model_data)
@@ -524,6 +536,17 @@ class OllamaModelViewer:
                 status_icons += "🔄"  # Duplicate indicator
             elif model.get('variant_info') and model.get('is_special_variant', False):
                 status_icons += "🔀"  # Special variant indicator
+            
+            # Add OpenWebUI usage indicators
+            usage_info = model.get('usage_info')
+            if usage_info:
+                usage_count = usage_info.get('usage_count', 0)
+                if usage_count > 50:
+                    status_icons += "🔥"  # Heavily used
+                elif usage_count > 10:
+                    status_icons += "📊"  # Frequently used
+                elif usage_count > 0:
+                    status_icons += "💬"  # Used
             
             item_id = self.tree.insert('', 'end', values=(
                 status_icons,
@@ -638,6 +661,37 @@ class OllamaModelViewer:
             elif filter_value == '📦 Model Families (2+ models)' and not model.get('variant_info'):
                 continue
             
+            # OpenWebUI Usage-based filters
+            elif filter_value == '📊 Used in OpenWebUI':
+                usage_info = model.get('usage_info')
+                if not usage_info or usage_info.get('usage_count', 0) == 0:
+                    continue
+            elif filter_value == '❌ Never Used in OpenWebUI':
+                usage_info = model.get('usage_info')
+                if usage_info and usage_info.get('usage_count', 0) > 0:
+                    continue
+            elif filter_value == '🔥 Frequently Used (>10 chats)':
+                usage_info = model.get('usage_info')
+                if not usage_info or usage_info.get('usage_count', 0) <= 10:
+                    continue
+            elif filter_value == '⚡ Recent OpenWebUI Activity':
+                usage_info = model.get('usage_info')
+                if not usage_info or not usage_info.get('last_used'):
+                    continue
+                # Check if used in last 7 days
+                try:
+                    last_used = usage_info['last_used']
+                    if isinstance(last_used, (int, float)):
+                        last_used_date = datetime.datetime.fromtimestamp(last_used)
+                    else:
+                        last_used_date = datetime.datetime.fromisoformat(str(last_used).replace('Z', '+00:00'))
+                    
+                    days_ago = (datetime.datetime.now() - last_used_date).days
+                    if days_ago > 7:
+                        continue
+                except:
+                    continue
+            
             self.filtered_models.append(model)
         
         self.populate_tree()
@@ -735,6 +789,21 @@ class OllamaModelViewer:
             if len(variant_info['regular_duplicates']) > 1:
                 family_info += f"\nDuplicates: {', '.join(variant_info['regular_duplicates'])}"
             details.append(("📦 Model Family", family_info))
+        
+        # Add OpenWebUI usage information
+        usage_info = model_data.get('usage_info')
+        if usage_info:
+            details.append(("📊 OpenWebUI Usage", ""))
+            details.append(("   💬 Total Chats", str(usage_info.get('usage_count', 0))))
+            details.append(("   🪙 Total Tokens", f"{usage_info.get('total_tokens', 0):,}"))
+            if usage_info.get('last_used'):
+                last_used_formatted = self.format_last_used_time(usage_info['last_used'])
+                details.append(("   🕒 Last Used", last_used_formatted))
+            if usage_info.get('first_used'):
+                first_used_formatted = self.format_last_used_time(usage_info['first_used'])
+                details.append(("   🎂 First Used", first_used_formatted))
+        else:
+            details.append(("📊 OpenWebUI Usage", "Never used in OpenWebUI"))
         
         for i, (label, value) in enumerate(details):
             label_widget = ttk.Label(scrollable_frame, 
@@ -1283,6 +1352,9 @@ class OllamaModelViewer:
             ("🗑️ = Queued for deletion", 'text'),
             ("🔄 = Duplicate model", 'text'),
             ("🔀 = Special variant (e.g., -a3b, -instruct)", 'text'),
+            ("💬 = Used in OpenWebUI", 'text'),
+            ("📊 = Frequently used (>10 chats)", 'text'),
+            ("🔥 = Heavily used (>50 chats)", 'text'),
             ("", 'space'),
             ("🔍 QUICK FILTERS:", 'section'),
             ("Use the dropdown to filter by:", 'text'),
@@ -1292,12 +1364,23 @@ class OllamaModelViewer:
             ("• 🔄 Duplicate Models", 'text'),
             ("• 🔀 Special Variants", 'text'),
             ("• 📦 Model Families (2+ models)", 'text'),
+            ("• 📊 Used in OpenWebUI", 'text'),
+            ("• ❌ Never Used in OpenWebUI", 'text'),
+            ("• 🔥 Frequently Used (>10 chats)", 'text'),
+            ("• ⚡ Recent OpenWebUI Activity", 'text'),
             ("• Size, age, capabilities, etc.", 'text'),
+            ("", 'space'),
+            ("📊 OPENWEBUI INTEGRATION:", 'section'),
+            ("Automatically detects OpenWebUI database", 'text'),
+            ("Shows actual usage stats from chat history", 'text'),
+            ("Track which models you really use", 'text'),
+            ("Filter by usage patterns to find unused models", 'text'),
             ("", 'space'),
             ("💾 STORAGE INFO:", 'section'),
             ("Total storage usage shown in status bar", 'text'),
             ("Duplicate detection helps identify space savings", 'text'),
-            ("Special variants (-a3b, -instruct) are preserved", 'text')
+            ("Special variants (-a3b, -instruct) are preserved", 'text'),
+            ("Usage data helps identify models safe to delete", 'text')
         ]
         
         for line_data in help_content:
@@ -1332,6 +1415,167 @@ class OllamaModelViewer:
         # Pack canvas and scrollbar
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+
+    def detect_openwebui_path(self):
+        """Detect OpenWebUI data directory automatically."""
+        common_paths = [
+            # Docker volume mounts
+            Path.home() / "openwebui",
+            Path.home() / "open-webui", 
+            Path.home() / "open_webui",
+            # Default Docker locations
+            Path("/app/backend/data"),
+            Path("/data"),
+            # Local installations
+            Path.home() / ".config" / "open-webui",
+            Path.home() / ".local" / "share" / "open-webui",
+            # Common container mount points
+            Path("/opt/open-webui/data"),
+            Path("/var/lib/open-webui"),
+        ]
+        
+        for path in common_paths:
+            db_path = path / "webui.db"
+            if db_path.exists():
+                self.openwebui_data_path = path
+                print(f"✅ Found OpenWebUI database at: {db_path}")
+                return
+        
+        # Try to find database by searching common locations
+        search_paths = [Path.home(), Path("/opt"), Path("/var/lib")]
+        for search_path in search_paths:
+            if search_path.exists():
+                try:
+                    for db_file in search_path.rglob("webui.db"):
+                        self.openwebui_data_path = db_file.parent
+                        print(f"✅ Found OpenWebUI database at: {db_file}")
+                        return
+                except (PermissionError, OSError):
+                    continue
+        
+        print("⚠️ OpenWebUI database not found. Usage data will not be available.")
+
+    def get_openwebui_usage_data(self) -> Dict[str, Dict]:
+        """Extract model usage data from OpenWebUI database."""
+        if not self.openwebui_data_path:
+            return {}
+        
+        db_path = self.openwebui_data_path / "webui.db"
+        if not db_path.exists():
+            return {}
+        
+        usage_data = {}
+        
+        try:
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            
+            # Query to get model usage from chat table
+            # This gets the latest usage of each model and counts total usage
+            query = """
+                SELECT 
+                    json_extract(chat.meta, '$.models[0]') as model_name,
+                    COUNT(*) as usage_count,
+                    MAX(chat.updated_at) as last_used,
+                    MIN(chat.updated_at) as first_used,
+                    SUM(CASE WHEN json_extract(chat.meta, '$.usage') IS NOT NULL 
+                             THEN json_extract(chat.meta, '$.usage.total_tokens') 
+                             ELSE 0 END) as total_tokens
+                FROM chat 
+                WHERE json_extract(chat.meta, '$.models[0]') IS NOT NULL
+                GROUP BY json_extract(chat.meta, '$.models[0]')
+                ORDER BY last_used DESC
+            """
+            
+            cursor.execute(query)
+            results = cursor.fetchall()
+            
+            for row in results:
+                model_name, usage_count, last_used, first_used, total_tokens = row
+                if model_name:
+                    # Clean model name (remove any prefixes)
+                    clean_name = self.clean_model_name_for_matching(model_name)
+                    
+                    usage_data[clean_name] = {
+                        'usage_count': usage_count or 0,
+                        'last_used': last_used,
+                        'first_used': first_used,
+                        'total_tokens': total_tokens or 0,
+                        'original_name': model_name
+                    }
+            
+            conn.close()
+            print(f"📊 Loaded usage data for {len(usage_data)} models from OpenWebUI")
+            
+        except Exception as e:
+            print(f"⚠️ Error reading OpenWebUI database: {e}")
+        
+        return usage_data
+
+    def clean_model_name_for_matching(self, model_name: str) -> str:
+        """Clean model name for matching between Ollama and OpenWebUI."""
+        # Remove common prefixes that OpenWebUI might add
+        prefixes_to_remove = ['ollama/', 'local/', 'models/']
+        
+        clean_name = model_name.lower().strip()
+        for prefix in prefixes_to_remove:
+            if clean_name.startswith(prefix):
+                clean_name = clean_name[len(prefix):]
+        
+        return clean_name
+
+    def get_model_usage_info(self, model_name: str) -> Optional[Dict]:
+        """Get usage information for a specific model from OpenWebUI data."""
+        if not self.openwebui_usage_data:
+            # Load usage data if not already loaded
+            self.openwebui_usage_data = self.get_openwebui_usage_data()
+        
+        clean_name = self.clean_model_name_for_matching(model_name)
+        return self.openwebui_usage_data.get(clean_name)
+
+    def format_last_used_time(self, timestamp: str) -> str:
+        """Format the last used timestamp into a human-readable string."""
+        if not timestamp:
+            return "Never used"
+        
+        try:
+            # Parse timestamp (OpenWebUI typically uses Unix timestamp)
+            if isinstance(timestamp, (int, float)):
+                last_used = datetime.datetime.fromtimestamp(timestamp)
+            else:
+                # Try to parse as ISO format or other common formats
+                try:
+                    last_used = datetime.datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                except:
+                    last_used = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+            
+            now = datetime.datetime.now()
+            diff = now - last_used
+            
+            if diff.days == 0:
+                if diff.seconds < 3600:
+                    minutes = diff.seconds // 60
+                    return f"{minutes} minutes ago"
+                else:
+                    hours = diff.seconds // 3600
+                    return f"{hours} hours ago"
+            elif diff.days == 1:
+                return "1 day ago"
+            elif diff.days < 7:
+                return f"{diff.days} days ago"
+            elif diff.days < 30:
+                weeks = diff.days // 7
+                return f"{weeks} week{'s' if weeks > 1 else ''} ago"
+            elif diff.days < 365:
+                months = diff.days // 30
+                return f"{months} month{'s' if months > 1 else ''} ago"
+            else:
+                years = diff.days // 365
+                return f"{years} year{'s' if years > 1 else ''} ago"
+                
+        except Exception as e:
+            print(f"Error parsing timestamp {timestamp}: {e}")
+            return "Unknown"
 
 def main():
     """Main function to run the application."""
