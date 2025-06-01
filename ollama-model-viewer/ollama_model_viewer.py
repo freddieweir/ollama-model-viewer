@@ -102,6 +102,19 @@ class OllamaModelViewer:
         self.search_var.trace('w', self.on_search_change)
         self.filter_var.trace('w', self.on_filter_change)
         
+        # Bind right-click event
+        self.tree.bind('<Button-3>', self.show_context_menu)  # Right-click
+        self.tree.bind('<Control-Button-1>', self.show_context_menu)  # Ctrl+click for Mac
+        
+        # Add keyboard shortcuts
+        self.root.bind('<Key-s>', self.keyboard_toggle_star)  # Press 's' to star
+        self.root.bind('<Key-d>', self.keyboard_add_to_queue)  # Press 'd' to delete queue
+        self.root.bind('<Key-r>', self.keyboard_remove_from_queue)  # Press 'r' to remove from queue
+        self.root.bind('<Return>', self.keyboard_show_details)  # Press Enter for details
+        
+        # Focus the tree so keyboard shortcuts work
+        self.tree.focus_set()
+        
     def setup_styles(self):
         """Configure ttk styles for consistent theming."""
         style = ttk.Style()
@@ -186,6 +199,19 @@ class OllamaModelViewer:
                                pady=8,
                                cursor='hand2')
         refresh_btn.pack(side='right')
+        
+        # Help button
+        help_btn = tk.Button(button_frame,
+                            text="❓ Help",
+                            command=self.show_help,
+                            bg=self.colors['accent_purple'],
+                            fg=self.colors['bg_primary'],
+                            font=('SF Pro Display', 11, 'bold'),
+                            relief='flat',
+                            padx=15,
+                            pady=6,
+                            cursor='hand2')
+        help_btn.pack(side='right', padx=(0, 10))
         
     def create_toolbar(self):
         """Create the toolbar with search and filter options."""
@@ -294,10 +320,6 @@ class OllamaModelViewer:
         self.context_menu.add_command(label="❌ Remove from Queue", command=self.context_remove_from_queue)
         self.context_menu.add_separator()
         self.context_menu.add_command(label="🗂️ Copy Model Name", command=self.context_copy_name)
-        
-        # Bind right-click event
-        self.tree.bind('<Button-3>', self.show_context_menu)  # Right-click
-        self.tree.bind('<Control-Button-1>', self.show_context_menu)  # Ctrl+click for Mac
         
     def create_status_bar(self):
         """Create the status bar."""
@@ -1001,6 +1023,131 @@ class OllamaModelViewer:
         
         progress_window.destroy()
         self.refresh_models()  # Reload the model list
+
+    def keyboard_toggle_star(self, event):
+        """Toggle star status for the selected model using keyboard shortcut."""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            model_name = item['values'][1]  # Name is in column 1 now
+            self.toggle_star(model_name)
+
+    def keyboard_add_to_queue(self, event):
+        """Add the selected model to the deletion queue using keyboard shortcut."""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            model_name = item['values'][1]  # Name is in column 1 now
+            self.deletion_queue.add(model_name)
+            self.update_queue_button()
+            self.populate_tree()
+
+    def keyboard_remove_from_queue(self, event):
+        """Remove the selected model from the deletion queue using keyboard shortcut."""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            model_name = item['values'][1]  # Name is in column 1 now
+            if model_name in self.deletion_queue:
+                self.deletion_queue.remove(model_name)
+                self.update_queue_button()
+                self.populate_tree()
+
+    def keyboard_show_details(self, event):
+        """Show details for the selected model using keyboard shortcut."""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            model_name = item['values'][1]  # Name is in column 1 now
+            self.show_model_details(model_name)
+
+    def show_help(self):
+        """Show the help dialog."""
+        help_window = tk.Toplevel(self.root)
+        help_window.title("🚀 Ollama Model Viewer Help")
+        help_window.geometry("600x400")
+        help_window.configure(bg=self.colors['bg_primary'])
+        
+        # Create scrollable frame
+        canvas = tk.Canvas(help_window, bg=self.colors['bg_primary'])
+        scrollbar = ttk.Scrollbar(help_window, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas, style='Custom.TFrame')
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Add help content
+        help_content = [
+            ("🚀 Ollama Model Viewer Help", 'header'),
+            ("", 'space'),
+            ("⭐ HOW TO STAR A MODEL:", 'section'),
+            ("Method 1: Right-click any model → ⭐ Toggle Star", 'text'),
+            ("Method 2: Select model → Press 's' key", 'text'),
+            ("", 'space'),
+            ("🗑️ HOW TO DELETE MODELS:", 'section'),
+            ("1. Right-click model → 🗑️ Add to Deletion Queue", 'text'),
+            ("2. Click 🗑️ Queue button in header", 'text'),
+            ("3. Review storage estimate and click 🔥 Delete All", 'text'),
+            ("", 'space'),
+            ("⌨️ KEYBOARD SHORTCUTS:", 'section'),
+            ("S = Star/unstar selected model", 'text'),
+            ("D = Add to deletion queue", 'text'),
+            ("R = Remove from deletion queue", 'text'),
+            ("Enter = Show model details", 'text'),
+            ("", 'space'),
+            ("🎯 STATUS ICONS:", 'section'),
+            ("🟢 = Recently used (< 2 weeks)", 'text'),
+            ("🟡 = Moderately used (2-4 weeks)", 'text'),
+            ("🔴 = Old model (1+ month)", 'text'),
+            ("⭐ = Starred/favorite model", 'text'),
+            ("🔓 = Liberated/uncensored model", 'text'),
+            ("🗑️ = Queued for deletion", 'text'),
+            ("", 'space'),
+            ("🔍 QUICK FILTERS:", 'section'),
+            ("Use the dropdown to filter by:", 'text'),
+            ("• ⭐ Starred Models", 'text'),
+            ("• 🔓 Liberated Models", 'text'),
+            ("• 🗑️ Queued for Deletion", 'text'),
+            ("• Size, age, capabilities, etc.", 'text')
+        ]
+        
+        for line_data in help_content:
+            if isinstance(line_data, tuple):
+                text, style_type = line_data
+            else:
+                text, style_type = line_data, 'text'
+            
+            if style_type == 'header':
+                font = ('SF Pro Display', 16, 'bold')
+                color = self.colors['accent_blue']
+            elif style_type == 'section':
+                font = ('SF Pro Display', 12, 'bold')
+                color = self.colors['accent_green']
+            elif style_type == 'space':
+                font = ('SF Pro Display', 6)
+                color = self.colors['text_primary']
+            else:
+                font = ('SF Pro Display', 11)
+                color = self.colors['text_primary']
+            
+            if text:  # Don't create empty labels
+                label = tk.Label(scrollable_frame, 
+                                text=text,
+                                bg=self.colors['bg_primary'],
+                                fg=color,
+                                font=font,
+                                anchor='w',
+                                justify='left')
+                label.pack(anchor='w', padx=20, pady=2, fill='x')
+        
+        # Pack canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
 def main():
     """Main function to run the application."""
