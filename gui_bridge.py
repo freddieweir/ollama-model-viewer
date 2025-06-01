@@ -16,7 +16,14 @@ from dataclasses import dataclass
 from enum import Enum
 
 # Import the original tkinter implementation
-from ollama_model_viewer import OllamaModelViewer as TkinterModelViewer
+try:
+    from ollama_model_viewer import OllamaModelViewer as TkinterModelViewer
+    TKINTER_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ tkinter not available: {e}")
+    print("💡 Install tkinter with: brew install python-tk")
+    TKINTER_AVAILABLE = False
+    TkinterModelViewer = None
 
 # Import the new macOS implementation
 try:
@@ -85,6 +92,14 @@ class ModelViewerGUIBridge:
             return GUIFramework.MACOS_NATIVE
         
         else:  # TKINTER
+            if not TKINTER_AVAILABLE:
+                print("⚠️ tkinter not available but requested")
+                if platform.system() == "Darwin" and MACOS_AVAILABLE:
+                    print("🔄 Falling back to macOS native GUI")
+                    return GUIFramework.MACOS_NATIVE
+                else:
+                    print("❌ No GUI framework available")
+                    return GUIFramework.TKINTER  # Will fail gracefully later
             return GUIFramework.TKINTER
     
     def initialize_gui(self) -> bool:
@@ -143,6 +158,11 @@ class ModelViewerGUIBridge:
     def _initialize_tkinter_gui(self) -> bool:
         """Initialize the tkinter GUI implementation."""
         print("🚀 Initializing tkinter GUI...")
+        
+        if not TKINTER_AVAILABLE:
+            print("❌ tkinter not available - cannot initialize tkinter GUI")
+            print("💡 Install tkinter with: brew install python-tk (macOS)")
+            return False
         
         try:
             self.viewer_instance = TkinterModelViewer()
