@@ -540,27 +540,12 @@ class OllamaModelViewer:
             elif model.get('variant_info') and model.get('is_special_variant', False):
                 status_icons += "🔀"  # Special variant indicator
             
-            # Add OpenWebUI usage indicators
-            usage_info = model.get('usage_info')
-            if usage_info:
-                usage_count = usage_info.get('usage_count', 0)
-                if usage_count > 50:
-                    status_icons += "🔥"  # Heavily used
-                elif usage_count > 10:
-                    status_icons += "📊"  # Frequently used
-                elif usage_count > 0:
-                    status_icons += "💬"  # Used
             
             item_id = self.tree.insert('', 'end', values=(
                 status_icons,
                 (f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']),
                 model['size'],
                 (f"{"🟢" if model.get("age_category") == "Recently Used" else "🟡" if model.get("age_category") == "Moderately Used" else "🔴"} {model["modified"]}"),
-                (
-                    self.format_last_used_time(model.get('usage_info', {}).get('last_used')) 
-                    if model and isinstance(model, dict) and model.get('usage_info') and model.get('usage_info', {}).get('last_used') 
-                    else 'Never used'
-                ),
                 model['capabilities'],
                 model['status'],
                 model['id'][:12] + "..."  # Truncate ID for display
