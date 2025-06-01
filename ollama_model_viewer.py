@@ -531,16 +531,7 @@ class OllamaModelViewer:
         for model in self.filtered_models:
             # Build status icons string - start with age indicator
             if model['age_category'] == 'Recently Used':
-                status_icons = "🟢"
-            elif model['age_category'] == 'Moderately Used':
-                status_icons = "🟡"
-            else:
-                status_icons = "🔴"
-            
-            # Add special status indicators
-            if model.get('is_starred', False):
-                status_icons += "⭐"
-            if model.get('is_liberated', False):
+                status_icons = ""  # Age indicators moved to Last Modified column
                 status_icons += "🔓"
             if model.get('is_queued_for_deletion', False):
                 status_icons += "🗑️"
@@ -564,7 +555,7 @@ class OllamaModelViewer:
                 status_icons,
                 model['name'],
                 model['size'],
-                model['modified'],
+                (f"{"🟢" if model.get("age_category") == "Recently Used" else "🟡" if model.get("age_category") == "Moderately Used" else "🔴"} {model["modified"]}"),
                 (
                     self.format_last_used_time(model.get('usage_info', {}).get('last_used')) 
                     if model and isinstance(model, dict) and model.get('usage_info') and model.get('usage_info', {}).get('last_used') 
