@@ -452,10 +452,10 @@ class OllamaModelViewer:
         
         # Add duplicate/variant information to model data
         for model in models:
-            model['is_duplicate'] = model['name'] in duplicates
-            base_name = self.get_model_base_name(model['name'])
+            model['is_duplicate'] = (f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']) in duplicates
+            base_name = self.get_model_base_name((f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']))
             model['variant_info'] = variants.get(base_name, None)
-            model['is_special_variant'] = self.is_special_variant(model['name'])
+            model['is_special_variant'] = self.is_special_variant((f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']))
         
         return models
     
@@ -553,7 +553,7 @@ class OllamaModelViewer:
             
             item_id = self.tree.insert('', 'end', values=(
                 status_icons,
-                model['name'],
+                (f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']),
                 model['size'],
                 (f"{"🟢" if model.get("age_category") == "Recently Used" else "🟡" if model.get("age_category") == "Moderately Used" else "🔴"} {model["modified"]}"),
                 (
@@ -628,7 +628,7 @@ class OllamaModelViewer:
         
         for model in self.models_data:
             # Apply search filter
-            if search_term and search_term not in model['name'].lower():
+            if search_term and search_term not in (f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']).lower():
                 continue
             
             # Apply category filter
@@ -744,7 +744,7 @@ class OllamaModelViewer:
         # Find the model data
         model_data = None
         for model in self.models_data:
-            if model['name'] == model_name:
+            if (f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']) == model_name:
                 model_data = model
                 break
         
@@ -877,7 +877,7 @@ class OllamaModelViewer:
         total_bytes = 0
         for model_name in model_names:
             for model in self.models_data:
-                if model['name'] == model_name:
+                if (f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']) == model_name:
                     try:
                         # Parse size (e.g., "4.7 GB" -> 4.7)
                         size_parts = model['size'].split()
@@ -938,12 +938,12 @@ class OllamaModelViewer:
         
         # Group models by base name
         for model in self.models_data:
-            base_name = self.get_model_base_name(model['name'])
-            params = self.get_model_params(model['name'])
+            base_name = self.get_model_base_name((f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']))
+            params = self.get_model_params((f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']))
             
             if base_name not in model_families:
                 model_families[base_name] = []
-            model_families[base_name].append(model['name'])
+            model_families[base_name].append((f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']))
         
         # Identify duplicates and variants
         for base_name, models in model_families.items():
@@ -1118,7 +1118,7 @@ class OllamaModelViewer:
         # Add models to listbox with details
         for model_name in sorted(self.deletion_queue):
             for model in self.models_data:
-                if model['name'] == model_name:
+                if (f"💬 {model['name']}" if model.get("usage_info") and model.get("usage_info", {}).get("usage_count", 0) > 0 else model['name']) == model_name:
                     display_text = f"🗑️ {model_name} ({model['size']})"
                     if model.get('is_starred'):
                         display_text = f"⭐{display_text}"
