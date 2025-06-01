@@ -2,5 +2,10 @@
 # Core GUI framework (usually comes with Python)
 # tkinter is included with Python standard library
 
+# macOS-specific GUI dependencies for translucent effects
+pyobjc-core>=10.0
+pyobjc-framework-Cocoa>=10.0
+pyobjc-framework-Quartz>=10.0
+
 # Additional packages for enhanced functionality
 # Note: tkinter comes with Python, so no additional GUI packages needed 
