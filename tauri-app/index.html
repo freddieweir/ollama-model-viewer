@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Ollama Model Viewer</title>
+    <link rel="stylesheet" href="./src/styles.css">
+    <style>
+        /* Ensure the app fills the window and supports transparency */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            background: transparent;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-app-region: drag;
+        }
+        
+        /* Make interactive elements draggable */
+        button, input, select, textarea, .interactive {
+            -webkit-app-region: no-drag;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="header" class="header">
+            <h1>🚀 Ollama Model Viewer</h1>
+            <div class="header-buttons">
+                <button id="help-btn" class="btn btn-help">❓ Help</button>
+                <button id="queue-btn" class="btn btn-queue">🗑️ Queue (0)</button>
+                <button id="refresh-btn" class="btn btn-refresh">🔄 Refresh</button>
+            </div>
+        </div>
+        
+        <div id="toolbar" class="toolbar">
+            <div class="search-section">
+                <label>🔍 Search:</label>
+                <input type="text" id="search-input" placeholder="Search models...">
+            </div>
+            <div class="filter-section">
+                <label>🎯 Filter:</label>
+                <select id="filter-select">
+                    <option value="all">All Models</option>
+                    <option value="recent">Recently Used (< 2 weeks)</option>
+                    <option value="moderate">Moderately Used (2-4 weeks)</option>
+                    <option value="old">Old Models (1+ month)</option>
+                    <option value="starred">⭐ Starred Models</option>
+                    <option value="liberated">🔓 Liberated Models</option>
+                    <option value="queued">🗑️ Queued for Deletion</option>
+                </select>
+            </div>
+            <div class="sort-section">
+                <label>📊 Sort:</label>
+                <select id="sort-select">
+                    <option value="name">Name</option>
+                    <option value="size">Size</option>
+                    <option value="modified">Last Modified</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="models-container" class="models-container">
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>🔄 Loading models...</p>
+            </div>
+            <div id="models-grid" class="models-grid" style="display: none;">
+                <!-- Models will be populated here -->
+            </div>
+        </div>
+        
+        <div id="status-bar" class="status-bar">
+            <span id="status-text">Ready</span>
+            <span id="model-count"></span>
+            <span id="storage-info">💾 Calculating storage...</span>
+        </div>
+    </div>
+
+    <script type="module" src="./src/main.ts"></script>
+</body>
+</html> 
