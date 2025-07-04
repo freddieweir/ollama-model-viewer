@@ -1,5 +1,4 @@
 use std::process::Command;
-use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use crate::{ModelData, UsageInfo};
 
@@ -168,7 +167,7 @@ fn is_liberated_model(model_name: &str) -> bool {
 // Analyze model variants and duplicates
 fn analyze_model_variants(model_name: &str, existing_models: &[ModelData]) -> (bool, bool) {
     let base_name = get_model_base_name(model_name);
-    let params = get_model_params(model_name);
+    let _params = get_model_params(model_name);
     
     // Check if this is a special variant
     let is_special_variant = is_special_variant(model_name);
@@ -178,7 +177,7 @@ fn analyze_model_variants(model_name: &str, existing_models: &[ModelData]) -> (b
     
     for existing_model in existing_models {
         let existing_base = get_model_base_name(&existing_model.name);
-        let existing_params = get_model_params(&existing_model.name);
+        let _existing_params = get_model_params(&existing_model.name);
         
         if base_name == existing_base {
             // Same base model

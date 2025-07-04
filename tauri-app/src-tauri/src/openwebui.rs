@@ -89,11 +89,11 @@ async fn copy_from_docker_container() -> Result<PathBuf, Box<dyn std::error::Err
 }
 
 // Get model usage data from OpenWebUI database
-pub async fn get_openwebui_usage_data(db_path: &PathBuf) -> Result<HashMap<String, UsageInfo>, Box<dyn std::error::Error>> {
+pub async fn get_openwebui_usage_data(_db_path: &PathBuf) -> Result<HashMap<String, UsageInfo>, Box<dyn std::error::Error>> {
     // For security and privacy, we'll implement a simplified version
     // In a real implementation, we would use rusqlite to read the database
     
-    let mut usage_data = HashMap::new();
+    let usage_data = HashMap::new();
     
     // This is a placeholder implementation
     // In the actual implementation, we would:

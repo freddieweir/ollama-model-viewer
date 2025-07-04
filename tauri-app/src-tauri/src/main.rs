@@ -2,9 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
-use std::process::Command;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, State, Window};
 use tokio::sync::Mutex;
@@ -15,7 +12,6 @@ mod openwebui;
 
 use ollama::*;
 use config::*;
-use openwebui::*;
 
 // Application state
 #[derive(Default)]
@@ -207,10 +203,9 @@ async fn initialize_app(app: &tauri::App) -> Result<(), Box<dyn std::error::Erro
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
-            // Initialize the application
-            let app_handle = app.handle();
-            tokio::spawn(async move {
-                if let Err(e) = initialize_app(&app_handle).await {
+            // Initialize the application synchronously
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                if let Err(e) = initialize_app(app).await {
                     eprintln!("Failed to initialize app: {}", e);
                 }
             });
