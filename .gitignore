@@ -170,6 +170,30 @@ ehthumbs_vista.db
 # Windows shortcuts
 *.lnk
 
+# Node.js / npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+.pnp
+.pnp.js
+
+# Tauri
+tauri-app/dist/
+tauri-app/src-tauri/target/
+.tauri/
+
+# Rust
+target/
+
+# Frontend build artifacts
+dist/
+build/
+.vite/
+.cache/
+
 # Project specific
 *.log
 config.json
