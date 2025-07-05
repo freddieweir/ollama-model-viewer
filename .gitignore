@@ -194,8 +194,114 @@ build/
 .vite/
 .cache/
 
+# TypeScript / JavaScript build artifacts
+*.tsbuildinfo
+.turbo/
+.next/
+.nuxt/
+.svelte-kit/
+
+# Test and coverage files
+coverage/
+.nyc_output/
+*.lcov
+junit.xml
+test-results/
+playwright-report/
+.coverage.*
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.sublime-*
+.atom/
+.brackets.json
+.vs/
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Vim/Neovim
+*.swp
+*.swo
+*~
+.netrwhist
+Session.vim
+Sessionx.vim
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Tauri build outputs and installers
+*.msi
+*.dmg
+*.deb
+*.rpm
+*.tar.gz
+*.zip
+*.app/
+*.exe
+WixTools/
+src-tauri/bundle/
+src-tauri/gen/
+
+# User data and configuration files
+.ollama_model_viewer_config.json
+*.db
+*.sqlite
+*.sqlite3
+webui.db*
+.config/
+.local/
+
+# Security-sensitive files (should never be committed)
+*.env
+*.env.*
+!*.env.example
+*.key
+*.pem
+*.p12
+*.jks
+*.keystore
+*secret*
+*password*
+*token*
+*.backup
+*.bak
+
+# Developer tools and temporary files
+.eslintcache
+.stylelintcache
+.parcel-cache/
+.nx/
+.vercel
+.netlify/
+.firebase/
+.serverless/
+
+# Logs and temporary files
+*.log*
+*.tmp
+*.temp
+*.pid
+*.seed
+*.lock
+.grunt
+
 # Project specific
-*.log
 config.json
+crash.log
+*.crash
 .vscode/
 .idea/ 
