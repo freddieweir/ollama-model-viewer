@@ -1,0 +1,29 @@
+[package]
+name = "ollama-model-viewer-tauri"
+version = "1.0.0"
+description = "A beautiful, ADHD-friendly desktop application for viewing and managing Ollama models"
+authors = [""]
+license = "MIT"
+repository = ""
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+tauri = { version = "1.5", features = [ "clipboard-write-text", "fs-remove-dir", "fs-write-file", "fs-copy-file", "fs-create-dir", "clipboard-read-text", "window-minimize", "fs-read-file", "fs-remove-file", "window-maximize", "fs-rename-file", "fs-read-dir", "fs-exists", "window-unmaximize", "window-unminimize", "window-start-dragging", "window-show", "window-hide", "window-close", "path-all", "dialog-ask", "dialog-confirm", "dialog-message", "dialog-open", "dialog-save", "shell-execute", "shell-sidecar", "shell-open"] }
+tokio = { version = "1.0", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5.0"
+
+[features]
+# by default Tauri runs in production mode
+# when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
+default = ["custom-protocol"]
+# this feature is used for production builds or when `devPath` points to the filesystem
+# DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"] 

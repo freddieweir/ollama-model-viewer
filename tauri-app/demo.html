@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Ollama Model Viewer - Demo</title>
+    <link rel="stylesheet" href="./src/styles.css">
+    <style>
+        /* Override some styles for demo */
+        body {
+            background: linear-gradient(135deg, 
+                rgba(30, 30, 46, 0.95), 
+                rgba(49, 50, 68, 0.85)
+            );
+        }
+        
+        #app {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        
+        .demo-banner {
+            background: var(--accent-blue);
+            color: var(--bg-primary);
+            text-align: center;
+            padding: 8px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-banner">
+        🚀 Demo Mode - Showing Mock Data
+    </div>
+    
+    <div id="app">
+        <div id="header" class="header">
+            <h1>🚀 Ollama Model Viewer</h1>
+            <div class="header-buttons">
+                <button id="help-btn" class="btn btn-help">❓ Help</button>
+                <button id="queue-btn" class="btn btn-queue">🗑️ Queue (2)</button>
+                <button id="refresh-btn" class="btn btn-refresh">🔄 Refresh</button>
+            </div>
+        </div>
+        
+        <div id="toolbar" class="toolbar">
+            <div class="search-section">
+                <label>🔍 Search:</label>
+                <input type="text" id="search-input" placeholder="Search models...">
+            </div>
+            <div class="filter-section">
+                <label>🎯 Filter:</label>
+                <select id="filter-select">
+                    <option value="all">All Models</option>
+                    <option value="recent">Recently Used (< 2 weeks)</option>
+                    <option value="moderate">Moderately Used (2-4 weeks)</option>
+                    <option value="old">Old Models (1+ month)</option>
+                    <option value="starred">⭐ Starred Models</option>
+                    <option value="liberated">🔓 Liberated Models</option>
+                    <option value="queued">🗑️ Queued for Deletion</option>
+                </select>
+            </div>
+            <div class="sort-section">
+                <label>📊 Sort:</label>
+                <select id="sort-select">
+                    <option value="name">Name</option>
+                    <option value="size">Size</option>
+                    <option value="modified">Last Modified</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="models-container" class="models-container">
+            <div id="models-grid" class="models-grid">
+                <!-- Mock model cards -->
+                <div class="model-card recent starred" style="animation-delay: 0.1s;">
+                    <div class="model-header">
+                        <h3 class="model-name">llama3.2:3b</h3>
+                        <div class="model-status">⭐</div>
+                    </div>
+                    
+                    <div class="model-info">
+                        <div class="model-size">
+                            <span>💾</span>
+                            <span>2.0GB</span>
+                        </div>
+                        <div class="model-modified">
+                            <span>📅</span>
+                            <span>2 days ago</span>
+                        </div>
+                        <div class="model-capabilities">
+                            <span>🔧</span>
+                            <span class="capability-tag">chat</span>
+                            <span class="capability-tag">instruct</span>
+                        </div>
+                        <div class="model-usage" style="display: flex; align-items: center; gap: 8px;">
+                            <span>📊 Used 47 times, last used yesterday</span>
+                        </div>
+                    </div>
+                    
+                    <div class="model-actions">
+                        <button class="action-btn action-star active">⭐ Starred</button>
+                        <button class="action-btn">🗑️ Queue</button>
+                        <button class="action-btn">📋 Copy Name</button>
+                    </div>
+                </div>
+
+                <div class="model-card moderate liberated" style="animation-delay: 0.2s;">
+                    <div class="model-header">
+                        <h3 class="model-name">mistral-nemo:12b-instruct-uncensored</h3>
+                        <div class="model-status">🔓</div>
+                    </div>
+                    
+                    <div class="model-info">
+                        <div class="model-size">
+                            <span>💾</span>
+                            <span>7.1GB</span>
+                        </div>
+                        <div class="model-modified">
+                            <span>📅</span>
+                            <span>3 weeks ago</span>
+                        </div>
+                        <div class="model-capabilities">
+                            <span>🔧</span>
+                            <span class="capability-tag">uncensored</span>
+                            <span class="capability-tag">instruct</span>
+                            <span class="capability-tag">creative</span>
+                        </div>
+                        <div class="model-usage" style="display: flex; align-items: center; gap: 8px;">
+                            <span>📊 Used 12 times, last used 5 days ago</span>
+                        </div>
+                    </div>
+                    
+                    <div class="model-actions">
+                        <button class="action-btn">☆ Star</button>
+                        <button class="action-btn">🗑️ Queue</button>
+                        <button class="action-btn">📋 Copy Name</button>
+                    </div>
+                </div>
+
+                <div class="model-card old queued" style="animation-delay: 0.3s;">
+                    <div class="model-header">
+                        <h3 class="model-name">codellama:7b</h3>
+                        <div class="model-status">🗑️</div>
+                    </div>
+                    
+                    <div class="model-info">
+                        <div class="model-size">
+                            <span>💾</span>
+                            <span>3.8GB</span>
+                        </div>
+                        <div class="model-modified">
+                            <span>📅</span>
+                            <span>2 months ago</span>
+                        </div>
+                        <div class="model-capabilities">
+                            <span>🔧</span>
+                            <span class="capability-tag">code</span>
+                            <span class="capability-tag">python</span>
+                        </div>
+                        <div class="model-usage" style="display: flex; align-items: center; gap: 8px;">
+                            <span>📊 Used 3 times, last used 6 weeks ago</span>
+                        </div>
+                    </div>
+                    
+                    <div class="model-actions">
+                        <button class="action-btn">☆ Star</button>
+                        <button class="action-btn action-queue active">✅ Queued</button>
+                        <button class="action-btn">📋 Copy Name</button>
+                    </div>
+                </div>
+
+                <div class="model-card recent" style="animation-delay: 0.4s;">
+                    <div class="model-header">
+                        <h3 class="model-name">qwen2.5:14b</h3>
+                        <div class="model-status"></div>
+                    </div>
+                    
+                    <div class="model-info">
+                        <div class="model-size">
+                            <span>💾</span>
+                            <span>8.4GB</span>
+                        </div>
+                        <div class="model-modified">
+                            <span>📅</span>
+                            <span>1 week ago</span>
+                        </div>
+                        <div class="model-capabilities">
+                            <span>🔧</span>
+                            <span class="capability-tag">chat</span>
+                            <span class="capability-tag">reasoning</span>
+                        </div>
+                        <div class="model-usage" style="display: flex; align-items: center; gap: 8px;">
+                            <span>📊 Used 23 times, last used 3 days ago</span>
+                        </div>
+                    </div>
+                    
+                    <div class="model-actions">
+                        <button class="action-btn">☆ Star</button>
+                        <button class="action-btn">🗑️ Queue</button>
+                        <button class="action-btn">📋 Copy Name</button>
+                    </div>
+                </div>
+
+                <div class="model-card old queued" style="animation-delay: 0.5s;">
+                    <div class="model-header">
+                        <h3 class="model-name">deepseek-coder:6.7b-instruct</h3>
+                        <div class="model-status">🗑️</div>
+                    </div>
+                    
+                    <div class="model-info">
+                        <div class="model-size">
+                            <span>💾</span>
+                            <span>3.7GB</span>
+                        </div>
+                        <div class="model-modified">
+                            <span>📅</span>
+                            <span>5 months ago</span>
+                        </div>
+                        <div class="model-capabilities">
+                            <span>🔧</span>
+                            <span class="capability-tag">code</span>
+                            <span class="capability-tag">instruct</span>
+                        </div>
+                        <div class="model-usage" style="display: flex; align-items: center; gap: 8px;">
+                            <span>📊 Used 1 time, last used 4 months ago</span>
+                        </div>
+                    </div>
+                    
+                    <div class="model-actions">
+                        <button class="action-btn">☆ Star</button>
+                        <button class="action-btn action-queue active">✅ Queued</button>
+                        <button class="action-btn">📋 Copy Name</button>
+                    </div>
+                </div>
+
+                <div class="model-card recent starred" style="animation-delay: 0.6s;">
+                    <div class="model-header">
+                        <h3 class="model-name">llama3.2:1b</h3>
+                        <div class="model-status">⭐</div>
+                    </div>
+                    
+                    <div class="model-info">
+                        <div class="model-size">
+                            <span>💾</span>
+                            <span>1.3GB</span>
+                        </div>
+                        <div class="model-modified">
+                            <span>📅</span>
+                            <span>4 days ago</span>
+                        </div>
+                        <div class="model-capabilities">
+                            <span>🔧</span>
+                            <span class="capability-tag">chat</span>
+                            <span class="capability-tag">lightweight</span>
+                        </div>
+                        <div class="model-usage" style="display: flex; align-items: center; gap: 8px;">
+                            <span>📊 Used 156 times, last used today</span>
+                        </div>
+                    </div>
+                    
+                    <div class="model-actions">
+                        <button class="action-btn action-star active">⭐ Starred</button>
+                        <button class="action-btn">🗑️ Queue</button>
+                        <button class="action-btn">📋 Copy Name</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="status-bar" class="status-bar">
+            <span id="status-text">✅ Demo loaded successfully</span>
+            <span id="model-count">📊 6 models (⭐ 2, 🗑️ 2)</span>
+            <span id="storage-info">💾 Ollama: 26.3GB / Total: 500GB</span>
+        </div>
+    </div>
+
+    <script>
+        // Demo functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('search-input');
+            const filterSelect = document.getElementById('filter-select');
+            const sortSelect = document.getElementById('sort-select');
+            const helpBtn = document.getElementById('help-btn');
+            const queueBtn = document.getElementById('queue-btn');
+            const refreshBtn = document.getElementById('refresh-btn');
+            
+            // Demo search functionality
+            searchInput.addEventListener('input', function() {
+                console.log('🔍 Search:', this.value);
+            });
+            
+            filterSelect.addEventListener('change', function() {
+                console.log('🎯 Filter:', this.value);
+            });
+            
+            sortSelect.addEventListener('change', function() {
+                console.log('📊 Sort:', this.value);
+            });
+            
+            helpBtn.addEventListener('click', function() {
+                alert(`🚀 Ollama Model Viewer Help
+
+🔍 Search: Type to search model names and capabilities
+🎯 Filter: Choose category (Recent, Old, Starred, etc.)
+📊 Sort: Order by name, size, or date
+
+Model Actions:
+⭐ Star: Mark important models
+🗑️ Queue: Queue for batch deletion
+📋 Copy: Copy model name to clipboard
+
+Color Coding:
+🟢 Recent models (< 2 weeks)
+🟡 Moderate models (2-4 weeks)  
+🔴 Old models (1+ month)
+🟣 Starred models
+🟠 Liberated models`);
+            });
+            
+            queueBtn.addEventListener('click', function() {
+                alert('🗑️ Deletion Queue:\n\n• codellama:7b\n• deepseek-coder:6.7b-instruct\n\nWould execute deletion in real app.');
+            });
+            
+            refreshBtn.addEventListener('click', function() {
+                console.log('🔄 Refresh triggered');
+                alert('🔄 In the real app, this would refresh the model list from Ollama.');
+            });
+            
+            // Demo action buttons
+            document.querySelectorAll('.action-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const action = this.textContent.includes('Star') ? 'star' : 
+                                  this.textContent.includes('Queue') ? 'queue' : 'copy';
+                    console.log('🎯 Action:', action);
+                    
+                    if (action === 'copy') {
+                        const modelName = this.closest('.model-card').querySelector('.model-name').textContent;
+                        alert(`📋 Copied "${modelName}" to clipboard (demo)`);
+                    }
+                });
+            });
+            
+            console.log('🚀 Demo loaded successfully!');
+        });
+    </script>
+</body>
+</html> 
