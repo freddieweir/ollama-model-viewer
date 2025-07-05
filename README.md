@@ -1,35 +1,35 @@
-# 🚀 Ollama Model Viewer
+# Ollama Model Viewer
 
 A desktop application for viewing and managing your Ollama models with intuitive color coding and comprehensive model information.
 
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)
 
-## ✨ Features
+## Features
 
-### 🎨 User-Friendly Design
+### User-Friendly Design
 - **Color-coded models** based on usage recency:
-  - 🟢 **Green**: Recently used (< 2 weeks)
-  - 🟡 **Yellow**: Moderately used (2-4 weeks)  
-  - 🔴 **Red**: Old models (1+ month)
-- **Clear visual hierarchy** with emojis and consistent spacing
+  - **Green**: Recently used (< 2 weeks)
+  - **Yellow**: Moderately used (2-4 weeks)  
+  - **Red**: Old models (1+ month)
+- **Clear visual hierarchy** with consistent spacing
 - **Dark theme** optimized for reduced eye strain
 - **Intuitive navigation** with keyboard and mouse support
 
-### 📊 Comprehensive Model Information
+### Comprehensive Model Information
 - **Model capabilities detection**:
-  - 📝 Text processing
-  - 👁️ Vision/multimodal
-  - 💻 Code generation
-  - 🔗 Embeddings
-  - 🛠️ Tool usage
-  - 🧠 Reasoning (R1 models)
+  - Text processing
+  - Vision/multimodal
+  - Code generation
+  - Embeddings
+  - Tool usage
+  - Reasoning (R1 models)
 - **Storage information** with size display
 - **Last modified timestamps**
 - **Model IDs** and metadata
 - **Real-time status** indicators
 
-### 🔍 Advanced Filtering & Search
+### Advanced Filtering & Search
 - **Real-time search** across model names
 - **Smart filters**:
   - Usage recency categories
@@ -38,13 +38,13 @@ A desktop application for viewing and managing your Ollama models with intuitive
 - **Sortable columns** (name, size, last modified)
 - **Model count** display
 
-### 🖱️ Interactive Features
+### Interactive Features
 - **Double-click** for detailed model information
 - **Refresh button** for real-time updates
 - **Responsive layout** that adapts to window size
 - **Scrollable views** for large model collections
 
-## 🛠️ Installation
+## Installation
 
 ### Prerequisites
 - **Python 3.8+** installed on your system
@@ -89,7 +89,7 @@ pip install -r requirements.txt
 python ollama_model_viewer.py
 ```
 
-## 🚀 Usage
+## Usage
 
 ### Main Interface
 
@@ -111,29 +111,29 @@ python ollama_model_viewer.py
 - **F5** - Refresh model list (planned)
 - **Escape** - Close detail windows
 
-## 🎯 Model Capability Detection
+## Model Capability Detection
 
 The app automatically detects model capabilities based on naming patterns:
 
 | Capability | Detection Keywords | Icon |
 |------------|-------------------|------|
-| Text | All models | 📝 |
-| Vision | vision, vl, visual, llava, clip | 👁️ |
-| Code | code, coder, coding | 💻 |
-| Embeddings | embed | 🔗 |
-| Tools | tool, function, agent | 🛠️ |
-| Reasoning | r1, reasoning, think | 🧠 |
+| Text | All models | Text |
+| Vision | vision, vl, visual, llava, clip | Vision |
+| Code | code, coder, coding | Code |
+| Embeddings | embed | Embed |
+| Tools | tool, function, agent | Tools |
+| Reasoning | r1, reasoning, think | Reasoning |
 
-## 🎨 Color Scheme
+## Color Scheme
 
-The application uses a carefully designed color palette optimized for ADHD users:
+The application uses a carefully designed color palette optimized for users with attention differences:
 
 - **Background**: Dark theme for reduced eye strain
 - **Text**: High contrast for readability
 - **Accents**: Distinct colors for different states
 - **Status indicators**: Clear visual feedback
 
-## 🔧 Configuration
+## Configuration
 
 ### Custom Virtual Environment
 
@@ -151,7 +151,7 @@ The app connects to Ollama via the command line interface:
 - Automatically parses `ollama list` output
 - Real-time model status detection
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -174,10 +174,7 @@ Run with debug output:
 python ollama_model_viewer.py --debug
 ```
 
-
-
-
-## 🔮 Future Features
+## Future Features
 
 - [ ] Model performance metrics
 - [ ] Usage analytics and charts
